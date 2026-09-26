@@ -532,6 +532,6 @@ object SettingElements {
             step >= 0.1f -> 1
             else -> 2
         }
-        return "%.${decimals}f".format(value)
+        return String.format(java.util.Locale.ROOT, "%.${decimals}f", value)
     }
 }

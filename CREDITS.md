@@ -11,11 +11,17 @@ original copyright header plus a "Modified by Dyrox" note.
 |---|---|---|---|---|
 | _none yet_ | | | | |
 
-The client modules (Phase 7) will study the structure of:
+The Phase 7 modules were written from scratch against the decompiled Minecraft 26.3 source; no
+file or snippet was copied from another client. The general ideas are common knowledge in the
+Minecraft utility-client scene, and these GPL-3.0 projects are where they are best known from:
 
-- [LiquidBounce](https://github.com/CCBlueX/LiquidBounce) (GPL-3.0)
-- [Meteor Client](https://github.com/MeteorDevelopment/meteor-client) (GPL-3.0)
-- [Wurst Client](https://github.com/Wurst-Imperium/Wurst7) (GPL-3.0)
+- [LiquidBounce](https://github.com/CCBlueX/LiquidBounce) (GPL-3.0): module/setting/event architecture,
+  server-side ("silent") rotations with a rotation manager and mouse-step (GCD) rounding, Scaffold
+- [Meteor Client](https://github.com/MeteorDevelopment/meteor-client) (GPL-3.0): the module set
+  (StorageESP, AutoTotem, ChestStealer, InventoryMove, ...)
+- [Wurst Client](https://github.com/Wurst-Imperium/Wurst7) (GPL-3.0): Nuker, OreESP/X-ray, Tracers
+
+If code is ever adapted from them, it is listed in the table above with its original header.
 
 ## Services and data formats
 

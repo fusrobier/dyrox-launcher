@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory
  * - `dyrox.debug.expand=HUD,ClickGUI`: modules whose settings start expanded in the ClickGUI
  * - `dyrox.debug.toggle=Sprint`: toggle a module a few seconds after joining the world (HUD/toast check)
  * - `dyrox.debug.switch=Alex`: with the alt manager open, switch to that launcher account (session swap check)
+ * - `dyrox.debug.script=...`: scripted steps once in the world, see [DebugScript]
  * A framebuffer screenshot (`screenshots/dyrox-debug.png`) is taken a few seconds after the scene is ready.
  */
 object DebugHooks {
@@ -51,6 +52,7 @@ object DebugHooks {
                 openScreen(minecraft, screen, parent = null, afterMillis = 5_000)
                 // Toggle a module shortly before the screenshot, so the array list and a toast show up.
                 System.getProperty("dyrox.debug.toggle")?.let { name -> later(8_000) { DyroxClient.modules[name]?.toggle() } }
+                System.getProperty("dyrox.debug.script")?.let { script -> later(3_000) { DebugScript.start(script) } }
             }
         }
     }

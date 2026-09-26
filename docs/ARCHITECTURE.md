@@ -116,5 +116,5 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 | 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | done |
 | 5 | Client core: event bus, modules, settings, config profiles, commands; IPC client + launcher integration | done |
 | 6 | Liquid Glass ClickGUI, HUD, notifications, in-game alt manager | done |
-| 7 | Starter modules per category | next |
-| 8 | Polish, packaging, docs | |
+| 7 | Modules: 40 across all categories, silent rotations, world rendering via gizmos, AntiAim third-person camera | done |
+| 8 | Polish, packaging, docs | next |

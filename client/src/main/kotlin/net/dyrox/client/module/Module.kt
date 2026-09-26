@@ -35,11 +35,12 @@ abstract class Module(
     defaultEnabled: Boolean = false,
     /** Not shown in the HUD array list. */
     val hidden: Boolean = false,
+    defaultBindMode: BindMode = BindMode.TOGGLE,
 ) : Configurable(name), Listenable {
     private val logger = LoggerFactory.getLogger("Dyrox/Module")
 
     val enabledValue: BooleanValue = register(BooleanValue(ENABLED, defaultEnabled))
-    val bind: KeyValue = register(KeyValue(BIND, KeyBind(defaultKey)))
+    val bind: KeyValue = register(KeyValue(BIND, KeyBind(defaultKey, defaultBindMode)))
 
     var enabled: Boolean
         get() = enabledValue.value

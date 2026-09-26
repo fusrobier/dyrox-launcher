@@ -33,6 +33,9 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
     private var search = ""
     private var searchFocused = false
 
+    /** True while a text field or key binding captures the keyboard (InventoryMove stays off then). */
+    val isTyping: Boolean get() = searchFocused || Focus.element != null
+
     override fun init() {
         opening.snapTo(0f)
         opening.animateTo(1f)
@@ -40,24 +43,31 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
     }
 
     /**
-     * First open (or new category): lay panels out left to right, wrapping into rows. Each row starts
-     * below the tallest panel of the previous one, so small windows still show every category.
+     * First open (or new category): a grid with as many columns as fit, and the rows sharing the
+     * height, so every category is on screen even in a small window. Panels scroll when their row is
+     * shorter than their module list (see [updatePanelLimits]).
      */
     private fun placeUnplacedPanels() {
-        var x = 10
-        var y = 36
-        var rowHeight = 0
-        for (panel in panels.filter { it.state.x.value < 0 || it.state.y.value < 0 }) {
-            if (x + Style.PANEL_WIDTH > width - 10 && x > 10) {
-                x = 10
-                y += rowHeight + 8
-                rowHeight = 0
-            }
-            panel.state.x.value = x
-            panel.state.y.value = y
-            // Reserve room for the panel's whole module list (expanded settings may still overlap; panels are draggable).
-            rowHeight = maxOf(rowHeight, (Style.HEADER_HEIGHT + 6 + panel.buttons.size * Style.MODULE_HEIGHT).coerceAtMost(height / 2))
-            x += Style.PANEL_WIDTH + 8
+        val unplaced = panels.filter { it.state.x.value < 0 || it.state.y.value < 0 }
+        if (unplaced.isEmpty()) return
+        val gap = 8
+        val columns = ((width - 20 + gap) / (Style.PANEL_WIDTH + gap)).coerceIn(1, unplaced.size)
+        val rows = (unplaced.size + columns - 1) / columns
+        val rowHeight = ((height - TOP - gap) / rows).coerceAtLeast(Style.HEADER_HEIGHT + Style.MODULE_HEIGHT)
+        // Centre the grid horizontally.
+        val left = ((width - (columns * Style.PANEL_WIDTH + (columns - 1) * gap)) / 2).coerceAtLeast(10)
+        unplaced.forEachIndexed { index, panel ->
+            panel.state.x.value = left + (index % columns) * (Style.PANEL_WIDTH + gap)
+            panel.state.y.value = TOP + (index / columns) * rowHeight
+        }
+    }
+
+    /** Each panel ends above the nearest panel below it in the same column, so lists scroll instead of overlapping. */
+    private fun updatePanelLimits() {
+        for (panel in panels) {
+            panel.bottomLimit = panels
+                .filter { it !== panel && it.y > panel.y && it.x < panel.x + panel.width && it.x + it.width > panel.x }
+                .minOfOrNull { it.y - 6 } ?: Int.MAX_VALUE
         }
     }
 
@@ -71,6 +81,7 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
+        updatePanelLimits()
         val filter = search.trim()
         panels.forEach { panel ->
             panel.filter = if (filter.isEmpty()) {
@@ -126,6 +137,9 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
         const val SEARCH_WIDTH = 200
         const val SEARCH_HEIGHT = 20
         const val SEARCH_Y = 8
+
+        /** Where panels start, below the search bar. */
+        const val TOP = 36
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {

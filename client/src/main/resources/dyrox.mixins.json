@@ -3,10 +3,24 @@
   "package": "net.dyrox.client.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "CameraMixin",
+    "ClientPacketListenerMixin",
     "ConnectionMixin",
+    "DeltaTrackerTimerMixin",
+    "EntityMixin",
+    "EntityRendererMixin",
+    "GameRendererMixin",
     "KeyboardHandlerMixin",
+    "LevelExtractorMixin",
+    "LightmapRenderStateExtractorMixin",
+    "LivingEntityRendererMixin",
+    "LocalPlayerMixin",
     "MinecraftAccessor",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "MouseHandlerMixin",
+    "MultiPlayerGameModeAccessor",
+    "MultiPlayerGameModeMixin",
+    "PlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -29,10 +29,13 @@ Fabric API and Fabric Language Kotlin.
 | Commands | `command/*` | Prefix `.` (configurable). Quoted arguments, completion API |
 | Launcher link | `integration/LauncherBridge.kt` | IPC client, instance name, profile, graceful shutdown |
 | Mixin entry | `DyroxHooks.kt` | The only functions mixins call |
+| Rotations | `rotation/RotationManager.kt` | Silent (server-side) rotations: highest-priority request wins, limited turn speed, mouse-step (GCD) rounding, glides back to the camera when released |
+| Targets / friends | `combat/Targets.kt`, `combat/Friends.kt` | Players / hostile / passive classification; friends in `config/dyrox/friends.json` (shared by all profiles) |
+| Third-person camera | `render/CameraController.kt` | Temporary, animated third person (AntiAim); hands control back if you press F5 |
+| World shapes | `render/WorldShapes.kt` | Boxes and lines through Minecraft's gizmo renderer (see MIXINS.md) |
 
-Categories: Combat, Movement, Player, Render, World, Misc, Exploit, Fun.
-Phase 5 ships one module, **Sprint**, which exercises the whole path (tick event, keybind, settings,
-config). The full set comes in Phase 7.
+Categories: Combat, Movement, Player, Render, World, Misc, Exploit, Fun. The module list is in
+[Modules](#modules-phase-7).
 
 ## Settings and profiles
 
@@ -69,10 +72,69 @@ config). The full set comes in Phase 7.
 | `.modules [category]` | List modules |
 | `.config <load\|save\|list\|delete> [name]` (`.profile`, `.cfg`) | Manage profiles; `save <name>` saves as and switches |
 | `.prefix <prefix>` | Change the prefix (1–3 chars, not `/`) |
+| `.set <module> <setting> [value]` (`.v`) | Show or change a setting: `.set killaura range 3.5`, `.set killaura turnspeed 60-90`, `.set esp entities items` (multi-choice entries toggle). Names ignore case and spaces |
+| `.friend <add|remove|list|clear> [name]` (`.f`) | Manage friends (never attacked, own ESP colour). Middle-clicking a player also toggles them |
 
 - **Privacy:** command messages never reach the server. The mod intercepts them through Fabric's
   `ClientSendMessageEvents.ALLOW_CHAT`, and they still go into chat history.
 - **Scope:** keybinds are keyboard-only for now, and they never fire while a screen (chat, GUI) is open.
+
+## Modules (Phase 7)
+
+40 modules. They were checked in a real 26.3 singleplayer game with scripted runs
+(`dyrox.debug.script`: commands, key presses, probes, screenshots). Not covered by those runs:
+MiddleClickFriend (needs a second player), AutoReconnect (needs a server), InventoryMove (reads the
+physical keyboard) and NoHurtCam (visual only).
+
+Default keys: ClickGUI Right Shift, KillAura R, Zoom C (hold); everything else is unbound (`.bind`).
+
+| Category | Module | What it does | Main settings |
+|---|---|---|---|
+| Combat | KillAura | Attacks the best target in range; silent rotations that turn at a limited, randomised speed; only hits when the server-side ray really hits the target | Range, Scan range, Targets, Priority, Rotations (Silent/Lock view/None), Turn speed, Timing (Cooldown/CPS), FOV, Through walls, Target ESP ring |
+| | TriggerBot | Attacks the entity under the crosshair once the weapon has recharged | Targets, Cooldown, Delay |
+| | Velocity | Scales knockback from hits and explosions | Horizontal %, Vertical %, Explosions |
+| | Criticals | Every hit a critical: Packet (reports a 0.0625-block hop before the attack) or Jump | Mode |
+| | AutoTotem | Keeps a totem in the off hand | Delay |
+| Movement | Sprint | Always sprint when vanilla allows it | |
+| | Fly | Vanilla (creative flight) or Motion; anti-kick | Mode, Speed, Vertical speed |
+| | Speed | Strafe Hop or Ground speed | Mode, Speed |
+| | Step | Walk up full blocks | Height |
+| | NoSlow | Full speed and sprint while eating, blocking, drawing a bow | Speed, Sprint |
+| | SafeWalk | Never walk off edges (sneak edge logic, no slowdown) | Only on ground |
+| | AutoWalk | Holds forward | |
+| | InventoryMove | Walk, jump and sprint with inventories, containers and the ClickGUI open (not while typing) | Sneak |
+| | Spider | Climb walls | Speed |
+| Player | NoFall | No fall damage (claims ground after 2 blocks of falling, below the damage threshold) | |
+| | FastPlace | Shorter right-click delay | Delay |
+| | AutoTool | Best hotbar tool while mining, switches back | Switch back |
+| | ChestStealer | Empties chests, barrels and shulker boxes, then closes them | Delay (ms range), Auto close |
+| | AutoRespawn | Respawns after death | Delay |
+| | AutoEat | Eats hotbar food below a hunger level, skips bad food | Hunger, Pause in combat |
+| Render | ClickGUI, HUD | Phase 6 | |
+| | ESP | Glow outline or boxes through walls, per-type colours, friends highlighted | Mode, Entities, colours, Box fill |
+| | Tracers | Lines from the crosshair to entities | Targets, Color (distance/ESP), Max distance, Width |
+| | StorageESP | Boxes around chests, ender chests, barrels, shulkers, hoppers, furnaces | Blocks, colours |
+| | OreESP | X-ray for ores: scans nearby chunks, outlines selected ores | Ores, Radius, Chunks per tick |
+| | Fullbright | Full brightness, no darkness effect | |
+| | NoHurtCam | No hurt camera shake | |
+| | Zoom | Hold C: smooth zoom with slower mouse | Zoom, Smooth, Slow mouse |
+| | CameraClip | Third-person camera through walls | Distance |
+| World | Scaffold | Places blocks under you (bridging, towering), silent rotations, target outline | Rotations, Turn speed, Safe walk, Swing, Restore slot |
+| | Nuker | Breaks blocks around you (many per tick in creative, one at a time in survival) | Range, Shape (Flat/Sphere), Blocks per tick, Rotate |
+| | FastBreak | Finishes blocks at 70 % (the vanilla server minimum) and skips the 5-tick pause | Break at, No delay |
+| | Timer | Client tick speed | Speed |
+| Exploit | Blink | Holds movement and action packets; others see you frozen (ghost box), then you catch up | Pulse, Show ghost |
+| Misc | MiddleClickFriend | Middle-click a player to (un)friend them | |
+| | AutoReconnect | "Reconnect" button on the disconnect screen; automatic after a delay while enabled | Delay |
+| Fun | AntiAim | Spinbot / jitter / backwards / random yaw and pitch, server-side only. Smooth third-person camera while active (glides out, glides back and restores first person when disabled) and your model shows the spoofed rotation | Yaw, Spin speed, Jitter angle, Pitch, Third person, Camera distance, Camera glide |
+| | Twerk | Sneak on and off | Interval |
+| | SkinDerp | Random skin layers | Interval |
+
+Rotation priorities: Scaffold > KillAura > Nuker > AntiAim, so AntiAim can stay on while you fight
+or build.
+
+Server notes: everything here works on vanilla servers. Anti-cheat plugins detect some modules
+(Fly, Speed, Timer, Blink, Criticals Packet); the settings default to conservative values.
 
 ## Launcher integration
 
@@ -154,6 +216,7 @@ Inert unless a `-Ddyrox.debug.*` property is set (per-instance JVM arguments in 
 | `dyrox.debug.expand=HUD,ClickGUI` | Modules whose settings start expanded in the ClickGUI |
 | `dyrox.debug.toggle=Sprint` | Toggle a module after joining the world (HUD and toast check) |
 | `dyrox.debug.switch=Alex` | With the alt manager open, switch to that launcher account |
+| `dyrox.debug.script=...` | Scripted steps once in the world (vanilla and Dyrox commands, key presses, probes to the log, screenshots). See `DebugScript.kt`. Used to verify Phase 7 modules in a real game |
 
 Each run saves a framebuffer screenshot to `screenshots/dyrox-debug.png`. Framebuffer screenshots
 show exact colours; Windows window captures can look brighter because of colour management.

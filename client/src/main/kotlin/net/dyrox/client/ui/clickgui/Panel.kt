@@ -110,9 +110,14 @@ class Panel(val category: Category, val state: PanelState, modules: List<Module>
 
     private fun contentHeight() = visibleButtons.sumOf { it.height }
 
-    /** Body height on screen, capped so tall panels scroll instead of running off-screen. */
-    private fun viewportHeight(screenHeight: Int): Int =
-        (contentHeight() * expand.value).roundToInt().coerceAtMost((screenHeight - y - Style.HEADER_HEIGHT - 8).coerceAtLeast(40))
+    /** Y where this panel must end: the top of the panel below it (set by the screen every frame). */
+    var bottomLimit: Int = Int.MAX_VALUE
+
+    /** Body height on screen, capped so tall panels scroll instead of running off-screen or over the panel below. */
+    private fun viewportHeight(screenHeight: Int): Int {
+        val bottom = minOf(screenHeight - 8, bottomLimit)
+        return (contentHeight() * expand.value).roundToInt().coerceAtMost((bottom - y - Style.HEADER_HEIGHT - 4).coerceAtLeast(Style.MODULE_HEIGHT))
+    }
 
     fun totalHeight(screenHeight: Int) = Style.HEADER_HEIGHT + viewportHeight(screenHeight) + 4
 

@@ -43,3 +43,29 @@ class WorldChangeEvent(val joined: Boolean) : Event
 
 /** The client is shutting down; last chance to save. */
 object ClientShutdownEvent : Event
+
+/** Start of the local player's tick, before input and movement. Only while in a world. */
+object PlayerPreTickEvent : Event
+
+/**
+ * Just before the movement packet is built (after this tick's movement). Modules pick rotations here
+ * (see RotationManager) and may spoof the ground flag of this tick's packet with [groundOverride].
+ */
+class PreMotionEvent : Event {
+    var groundOverride: Boolean? = null
+
+    /** Reported height offset for this tick's packet (Criticals' hop); the real position is untouched. */
+    var yOffset: Double = 0.0
+}
+
+/** The movement packet (with this tick's server rotation) was sent: attack, place, break here. */
+object PostMotionEvent : Event
+
+/** The player is about to attack [target] (vanilla click or a module), before the attack packet. */
+class AttackEvent(val target: net.minecraft.world.entity.Entity) : Event
+
+/**
+ * World-space debug shapes for this frame: draw with `net.minecraft.gizmos.Gizmos` (lines, boxes,
+ * text). Positions should be interpolated with [partialTicks].
+ */
+class WorldGizmoEvent(val partialTicks: Float, val camera: net.minecraft.client.Camera) : Event

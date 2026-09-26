@@ -3,7 +3,7 @@
 A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
 Minecraft **26.3**. Windows 11 first, Linux second.
 
-> Work in progress. Phases 2–6 of 8 are done: launcher core, accounts, multi-instance, client core, and the ClickGUI/HUD/alt manager.
+> Work in progress. Phases 2–7 of 8 are done: launcher core, accounts, multi-instance, client core, the ClickGUI/HUD/alt manager, and 40 client modules.
 > See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/AUTH.md](docs/AUTH.md) and [docs/MULTI_INSTANCE.md](docs/MULTI_INSTANCE.md).
 
 ## Features so far
@@ -26,6 +26,8 @@ Minecraft **26.3**. Windows 11 first, Linux second.
 - **Liquid Glass ClickGUI** (Right Shift): frosted translucent panels, capsule controls, Inter typeface, search, drag and drop, animations
 - **HUD**: glass watermark, animated array list and toast notifications
 - **In-game alt manager** on the multiplayer screen: switch accounts without restarting
+- **40 modules** in Combat, Movement, Player, Render, World, Exploit, Misc and Fun: KillAura with silent rotations, Criticals, Velocity, AutoTotem, Fly, Speed, Scaffold, Nuker, NoFall, ESP, Tracers, StorageESP, OreESP, Zoom, Blink, AntiAim/spinbot with a smooth third-person camera, and more. See [docs/CLIENT.md](docs/CLIENT.md#modules-phase-7)
+- `.set` and `.friend` commands; friends are never attacked (middle-click a player to add them)
 
 Microsoft sign-in needs an Azure app ID approved by Mojang. See [docs/AUTH.md](docs/AUTH.md#azure-app-id-required-for-microsoft-accounts).
 

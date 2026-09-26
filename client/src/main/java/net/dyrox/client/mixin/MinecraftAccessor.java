@@ -49,4 +49,11 @@ public interface MinecraftAccessor {
 
 	@Accessor("services")
 	Services dyrox$getServices();
+
+	// FastPlace: cooldown (ticks) between right-click uses.
+	@Accessor("rightClickDelay")
+	int dyrox$getRightClickDelay();
+
+	@Accessor("rightClickDelay")
+	void dyrox$setRightClickDelay(int ticks);
 }

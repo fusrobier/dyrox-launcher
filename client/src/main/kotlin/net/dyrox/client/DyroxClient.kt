@@ -20,9 +20,19 @@ import net.dyrox.client.event.WorldRenderEvent
 import net.dyrox.client.input.MinecraftKeys
 import net.dyrox.client.integration.LauncherBridge
 import net.dyrox.client.module.ModuleManager
-import net.dyrox.client.module.modules.movement.Sprint
-import net.dyrox.client.module.modules.render.ClickGui
-import net.dyrox.client.module.modules.render.Hud
+import net.dyrox.client.combat.Friends
+import net.dyrox.client.command.FriendCommand
+import net.dyrox.client.command.SetCommand
+import net.dyrox.client.module.modules.combat.*
+import net.dyrox.client.module.modules.exploit.*
+import net.dyrox.client.module.modules.`fun`.*
+import net.dyrox.client.module.modules.misc.*
+import net.dyrox.client.module.modules.movement.*
+import net.dyrox.client.module.modules.player.*
+import net.dyrox.client.module.modules.render.*
+import net.dyrox.client.module.modules.world.*
+import net.dyrox.client.render.CameraController
+import net.dyrox.client.rotation.RotationManager
 import net.dyrox.client.ui.clickgui.ClickGuiLayout
 import net.dyrox.client.altmanager.AltManagerScreen
 import net.dyrox.client.util.ChatOutput
@@ -63,6 +73,7 @@ object DyroxClient : ClientModInitializer {
         val profile = LauncherBridge.profile?.takeIf(ConfigSystem::isValidName) ?: config.activeProfile
         config.load(profile)
         config.trackChanges()
+        Friends.load(FabricLoader.getInstance().configDir.resolve(MOD_ID).resolve("friends.json"))
         runCatching { commands.prefix = config.state.commandPrefix }
 
         registerCommands()
@@ -78,8 +89,20 @@ object DyroxClient : ClientModInitializer {
     }
 
     private fun registerModules() {
-        // Phase 7 adds the full module set.
-        modules.register(ClickGui, Hud, Sprint)
+        modules.register(
+            // Combat
+            KillAura, TriggerBot, Velocity, Criticals, AutoTotem,
+            // Movement
+            Sprint, Fly, Speed, Step, NoSlow, SafeWalk, AutoWalk, InventoryMove, Spider,
+            // Player
+            NoFall, FastPlace, AutoTool, ChestStealer, AutoRespawn, AutoEat,
+            // Render
+            ClickGui, Hud, Esp, Tracers, StorageEsp, OreEsp, Fullbright, NoHurtCam, Zoom, CameraClip,
+            // World
+            Scaffold, Nuker, FastBreak, Timer,
+            // Exploit, Misc, Fun
+            Blink, MiddleClickFriend, AutoReconnect, AntiAim, Twerk, SkinDerp,
+        )
     }
 
     private fun registerCommands() {
@@ -91,11 +114,16 @@ object DyroxClient : ClientModInitializer {
             ModulesCommand(modules),
             ConfigCommand(config),
             PrefixCommand(commands, config),
+            FriendCommand(),
+            SetCommand(modules),
         )
     }
 
     private fun hookFabricEvents() {
-        ClientTickEvents.START_CLIENT_TICK.register { Events.post(GameTickEvent) }
+        ClientTickEvents.START_CLIENT_TICK.register {
+            Events.post(GameTickEvent)
+            CameraController.tick()
+        }
         ClientTickEvents.END_CLIENT_TICK.register { minecraft ->
             if (minecraft.player != null) Events.post(PlayerTickEvent)
             config.saveIfDirty()
@@ -118,6 +146,7 @@ object DyroxClient : ClientModInitializer {
         LevelRenderEvents.END_MAIN.register { context -> Events.post(WorldRenderEvent(context)) }
 
         ClientPlayConnectionEvents.JOIN.register { _, _, minecraft ->
+            RotationManager.reset()
             Events.post(WorldChangeEvent(joined = true))
             LauncherBridge.status("in_world", minecraft.currentServer?.ip ?: "singleplayer")
         }
