@@ -41,3 +41,12 @@ Fabric API is used instead of a mixin wherever it offers the hook:
 | Injection | `@Inject(at = HEAD, cancellable)` on both |
 | Filter | Only when `receiving == PacketFlow.CLIENTBOUND`, i.e. the client's own connection. In singleplayer the integrated server's connections go through the same class |
 | Threading | Receive handlers run on the Netty thread; modules that touch world state must hop to the client thread (`Minecraft.execute`) |
+
+## MinecraftAccessor
+
+| | |
+|---|---|
+| Target | `net.minecraft.client.Minecraft` fields (26.3) |
+| Kind | Accessor interface: `@Mutable @Accessor` setters for the final fields `user`, `userApiService`, `userPropertiesFuture`, `profileFuture`, `profileKeyPairManager`; a setter for `reportingContext`; getters for `proxy` and `services` |
+| Why | The in-game account switch. In 26.3 these are built once in the constructor from the launch user: `createUserApiService(discoveryService, …)`, `ProfileKeyPairManager.create(userApiService, user, gameDir)`, `ReportingContext.create(ReportEnvironment.local(), userApiService)`. `SessionSwapper` rebuilds them the same way (`MinecraftServicesDiscoveryService.create(proxy, true)` for a new user API service, `UserApiService.OFFLINE` and `ProfileKeyPairManager.EMPTY_KEY_MANAGER` for offline accounts) and calls `updateTitle()` |
+| Not swapped | `playerSocialManager` / friends service and `telemetryManager` (background threads started at launch) |

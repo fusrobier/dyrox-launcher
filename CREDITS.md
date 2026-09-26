@@ -32,6 +32,7 @@ The launcher talks to these public APIs. No code from them is included.
 - [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform) (Apache-2.0)
 - [Fabric Loader, Fabric API, Fabric Loom, Fabric Language Kotlin](https://fabricmc.net/) (Apache-2.0), mod platform (not redistributed; downloaded from Modrinth at install time)
 - [Mixin](https://github.com/SpongePowered/Mixin) (MIT), via Fabric Loader
+- [Inter](https://github.com/rsms/inter) typeface v4.1 by Rasmus Andersson (SIL Open Font License 1.1), bundled in the client (`assets/dyrox/font/`, licence in `licenses/Inter-OFL.txt`)
 - [JNA](https://github.com/java-native-access/jna) (Apache-2.0 / LGPL-2.1), for Windows DPAPI
 - [JUnit 5](https://junit.org/junit5/) (EPL-2.0, test only)
 

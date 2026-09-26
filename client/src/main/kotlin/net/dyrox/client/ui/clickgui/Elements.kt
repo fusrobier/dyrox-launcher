@@ -23,30 +23,25 @@ import net.dyrox.client.module.modules.render.ClickGui
 import net.dyrox.client.render.Animated
 import net.dyrox.client.render.Colors
 import net.dyrox.client.render.Draw
-import net.dyrox.shared.theme.DyroxPalette
+import net.dyrox.client.render.Glass
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import java.awt.Color
 import kotlin.math.roundToInt
 
-/** Sizes and colours of the ClickGUI. */
+/** Sizes of the Liquid Glass ClickGUI; colours come from [Glass] and the accent setting. */
 object Style {
-    const val PANEL_WIDTH = 118
-    const val HEADER_HEIGHT = 20
-    const val MODULE_HEIGHT = 16
-    const val ROW_HEIGHT = 14
-    const val PADDING = 5
-    const val RADIUS = 6
-
-    const val PANEL = DyroxPalette.SURFACE
-    const val HEADER = DyroxPalette.SURFACE_ELEVATED
-    const val HOVER = DyroxPalette.SURFACE_HIGHLIGHT
-    const val BORDER = DyroxPalette.BORDER
-    const val TEXT = DyroxPalette.TEXT_PRIMARY
-    const val TEXT_DIM = DyroxPalette.TEXT_SECONDARY
-    const val TEXT_MUTED = DyroxPalette.TEXT_MUTED
-    const val TRACK = DyroxPalette.SURFACE_HIGHLIGHT
+    const val PANEL_WIDTH = 126
+    const val HEADER_HEIGHT = 24
+    const val MODULE_HEIGHT = 18
+    const val ROW_HEIGHT = 15
+    const val PADDING = 7
+    const val RADIUS = 12
+    const val ROW_RADIUS = 7
 
     val accent: Int get() = ClickGui.accent
+
+    /** Y offset that vertically centres one line of UI text in a row of [rowHeight]. */
+    fun textY(rowTop: Int, rowHeight: Int) = rowTop + (rowHeight - 8) / 2
 }
 
 /** Something laid out in a panel column. Positions are assigned by the parent every frame. */
@@ -92,32 +87,47 @@ object Buttons {
     const val RIGHT = InputConstants.MOUSE_BUTTON_RIGHT
 }
 
+/** A small rounded chip showing a value (choice, key, mode). */
+private fun chip(g: GuiGraphicsExtractor, text: String, right: Int, rowTop: Int, rowHeight: Int, textColor: Int, maxWidth: Int) {
+    val shown = Draw.ellipsize(text, maxWidth)
+    val w = Draw.width(shown) + 10
+    val h = rowHeight - 3
+    val x = right - w
+    Draw.roundedRect(g, x, rowTop + 1, w, h, h / 2, Glass.HOVER)
+    Draw.roundedRing(g, x, rowTop + 1, w, h, h / 2, Glass.DIVIDER)
+    Draw.text(g, shown, x + 5, Style.textY(rowTop, rowHeight), textColor)
+}
+
 abstract class SettingElement<T>(val value: Value<T>) : Element() {
     override val visible: Boolean get() = value.visibleWhen()
     override val height: Int get() = Style.ROW_HEIGHT
     override fun tooltip(): String? = value.description.ifBlank { null }
 
-    protected fun label(g: GuiGraphicsExtractor, text: String = value.name, color: Int = Style.TEXT_DIM) =
-        Draw.text(g, Draw.ellipsize(text, width - 2 * Style.PADDING - 40), x + Style.PADDING, y + (Style.ROW_HEIGHT - 8) / 2, color)
+    protected fun label(g: GuiGraphicsExtractor, hovered: Boolean, text: String = value.name) =
+        Draw.text(g, Draw.ellipsize(text, width / 2 + 4), x + Style.PADDING, Style.textY(y, Style.ROW_HEIGHT), if (hovered) Glass.TEXT else Glass.TEXT_DIM)
 
-    protected fun valueText(g: GuiGraphicsExtractor, text: String, color: Int = Style.TEXT) {
-        val shown = Draw.ellipsize(text, width / 2)
-        Draw.text(g, shown, x + width - Style.PADDING - Draw.width(shown), y + (Style.ROW_HEIGHT - 8) / 2, color)
+    protected fun valueText(g: GuiGraphicsExtractor, text: String, color: Int = Glass.TEXT_DIM) {
+        val shown = Draw.ellipsize(text, width / 2 - Style.PADDING)
+        Draw.text(g, shown, x + width - Style.PADDING - Draw.width(shown), Style.textY(y, Style.ROW_HEIGHT), color)
     }
 }
 
+/** iOS-style switch: capsule track, white knob. */
 class ToggleElement(value: BooleanValue) : SettingElement<Boolean>(value) {
-    private val knob = Animated(if (value.value) 1f else 0f, ClickGui.duration(140f))
+    private val knob = Animated(if (value.value) 1f else 0f, ClickGui.duration(160f))
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         knob.animateTo(if (value.value) 1f else 0f)
         val t = knob.value
-        label(g, color = if (isHovered(mouseX, mouseY)) Style.TEXT else Style.TEXT_DIM)
-        val switchWidth = 16
-        val sx = x + width - Style.PADDING - switchWidth
-        val sy = y + (height - 8) / 2
-        Draw.roundedRect(g, sx, sy, switchWidth, 8, 4, Colors.lerp(Style.TRACK, Style.accent, t))
-        Draw.circle(g, sx + 4 + ((switchWidth - 8) * t).roundToInt(), sy + 4, 3, Colors.lerp(Style.TEXT_DIM, DyroxPalette.ON_ACCENT, t))
+        label(g, isHovered(mouseX, mouseY))
+        val trackWidth = 20
+        val trackHeight = 11
+        val tx = x + width - Style.PADDING - trackWidth
+        val ty = y + (height - trackHeight) / 2
+        Draw.roundedRect(g, tx, ty, trackWidth, trackHeight, trackHeight / 2, Colors.lerp(Glass.TRACK, Style.accent, t))
+        val knobX = tx + 5 + ((trackWidth - 10) * t).roundToInt()
+        Draw.circle(g, knobX, ty + 6, 5, 0x30000000)
+        Draw.circle(g, knobX, ty + 5, 4, Glass.KNOB)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -127,7 +137,20 @@ class ToggleElement(value: BooleanValue) : SettingElement<Boolean>(value) {
     }
 }
 
-/** Int or float slider; drag or click the track. */
+/** Capsule track with an accent fill and a white knob; drag or click. */
+private fun sliderTrack(g: GuiGraphicsExtractor, x: Int, y: Int, width: Int, from: Float, to: Float, knobs: List<Pair<Float, Boolean>>) {
+    Draw.roundedRect(g, x, y, width, 4, 2, Glass.TRACK)
+    val start = x + (width * from).roundToInt()
+    val end = x + (width * to).roundToInt()
+    Draw.roundedRect(g, start, y, (end - start).coerceAtLeast(2), 4, 2, Style.accent)
+    for ((position, active) in knobs) {
+        val kx = x + (width * position).roundToInt()
+        val radius = if (active) 5 else 4
+        Draw.circle(g, kx, y + 3, radius + 1, 0x30000000)
+        Draw.circle(g, kx, y + 2, radius, Glass.KNOB)
+    }
+}
+
 class SliderElement<N : Number>(
     value: Value<N>,
     private val min: Double,
@@ -138,21 +161,16 @@ class SliderElement<N : Number>(
     private var dragging = false
     private val fill = Animated(fraction(), ClickGui.duration(90f))
 
-    override val height: Int get() = Style.ROW_HEIGHT + 6
+    override val height: Int get() = Style.ROW_HEIGHT + 9
 
     private fun fraction(): Float = ((value.value.toDouble() - min) / (max - min)).toFloat().coerceIn(0f, 1f)
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g, color = if (isHovered(mouseX, mouseY) || dragging) Style.TEXT else Style.TEXT_DIM)
-        valueText(g, format(value.value))
+        label(g, isHovered(mouseX, mouseY) || dragging)
+        valueText(g, format(value.value), Glass.TEXT)
         fill.animateTo(fraction())
-        val trackX = x + Style.PADDING
-        val trackWidth = width - 2 * Style.PADDING
-        val trackY = y + Style.ROW_HEIGHT + 1
-        Draw.roundedRect(g, trackX, trackY, trackWidth, 3, 1, Style.TRACK)
-        val filled = (trackWidth * fill.value).roundToInt()
-        Draw.roundedRect(g, trackX, trackY, filled, 3, 1, Style.accent)
-        Draw.circle(g, trackX + filled, trackY + 1, if (dragging) 3 else 2, Style.TEXT)
+        val f = fill.value
+        sliderTrack(g, x + Style.PADDING, y + Style.ROW_HEIGHT + 2, width - 2 * Style.PADDING, 0f, f, listOf(f to dragging))
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -186,23 +204,17 @@ class RangeSliderElement<R>(
 ) : SettingElement<R>(value) {
     private var dragging = 0 // 0 none, 1 low, 2 high
 
-    override val height: Int get() = Style.ROW_HEIGHT + 6
+    override val height: Int get() = Style.ROW_HEIGHT + 9
 
     private fun fractionOf(v: Double) = ((v - bounds.start) / (bounds.endInclusive - bounds.start)).toFloat().coerceIn(0f, 1f)
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g, color = if (isHovered(mouseX, mouseY) || dragging != 0) Style.TEXT else Style.TEXT_DIM)
-        valueText(g, format(value.value))
+        label(g, isHovered(mouseX, mouseY) || dragging != 0)
+        valueText(g, format(value.value), Glass.TEXT)
         val (low, high) = get(value.value)
-        val trackX = x + Style.PADDING
-        val trackWidth = width - 2 * Style.PADDING
-        val trackY = y + Style.ROW_HEIGHT + 1
-        val lowX = trackX + (trackWidth * fractionOf(low)).roundToInt()
-        val highX = trackX + (trackWidth * fractionOf(high)).roundToInt()
-        Draw.roundedRect(g, trackX, trackY, trackWidth, 3, 1, Style.TRACK)
-        Draw.roundedRect(g, lowX, trackY, (highX - lowX).coerceAtLeast(1), 3, 1, Style.accent)
-        Draw.circle(g, lowX, trackY + 1, if (dragging == 1) 3 else 2, Style.TEXT)
-        Draw.circle(g, highX, trackY + 1, if (dragging == 2) 3 else 2, Style.TEXT)
+        val lo = fractionOf(low)
+        val hi = fractionOf(high)
+        sliderTrack(g, x + Style.PADDING, y + Style.ROW_HEIGHT + 2, width - 2 * Style.PADDING, lo, hi, listOf(lo to (dragging == 1), hi to (dragging == 2)))
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -235,8 +247,8 @@ class RangeSliderElement<R>(
 /** Left click: next choice, right click: previous. */
 class ChoiceElement<E : NamedChoice>(private val choice: ChoiceValue<E>) : SettingElement<E>(choice) {
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g, color = if (isHovered(mouseX, mouseY)) Style.TEXT else Style.TEXT_DIM)
-        valueText(g, choice.value.choiceName, Style.accent)
+        label(g, isHovered(mouseX, mouseY))
+        chip(g, choice.value.choiceName, x + width - Style.PADDING, y, Style.ROW_HEIGHT, Style.accent, width / 2 - 12)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -249,21 +261,23 @@ class ChoiceElement<E : NamedChoice>(private val choice: ChoiceValue<E>) : Setti
     }
 }
 
-/** A header row, then one checkbox row per option. */
+/** A header row, then one check row per option. */
 class MultiChoiceElement<E : NamedChoice>(private val multi: MultiChoiceValue<E>) : SettingElement<Set<E>>(multi) {
-    private val optionHeight = 12
+    private val optionHeight = 13
 
     override val height: Int get() = Style.ROW_HEIGHT + multi.choices.size * optionHeight
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g)
-        valueText(g, "${multi.value.size}/${multi.choices.size}", Style.TEXT_MUTED)
+        label(g, false)
+        valueText(g, "${multi.value.size}/${multi.choices.size}", Glass.TEXT_MUTED)
         multi.choices.forEachIndexed { index, option ->
             val rowY = y + Style.ROW_HEIGHT + index * optionHeight
             val selected = option in multi.value
             val hovered = mouseX >= x && mouseX < x + width && mouseY >= rowY && mouseY < rowY + optionHeight
-            Draw.roundedRect(g, x + Style.PADDING + 4, rowY + 2, 7, 7, 2, if (selected) Style.accent else Style.TRACK)
-            Draw.text(g, option.choiceName, x + Style.PADDING + 15, rowY + 2, if (selected || hovered) Style.TEXT else Style.TEXT_MUTED)
+            val box = x + Style.PADDING + 3
+            Draw.roundedRect(g, box, rowY + 2, 9, 9, 3, if (selected) Style.accent else Glass.TRACK)
+            if (selected) Draw.circle(g, box + 4, rowY + 6, 2, Glass.KNOB)
+            Draw.text(g, option.choiceName, box + 14, Style.textY(rowY, optionHeight), if (selected || hovered) Glass.TEXT else Glass.TEXT_MUTED)
         }
     }
 
@@ -279,12 +293,12 @@ class MultiChoiceElement<E : NamedChoice>(private val multi: MultiChoiceValue<E>
 /** Swatch; click to expand hue / saturation / brightness / opacity sliders and the rainbow switch. */
 class ColorElement(private val color: ColorValue) : SettingElement<DyroxColor>(color) {
     private var expanded = false
-    private val open = Animated(0f, ClickGui.duration(160f))
+    private val open = Animated(0f, ClickGui.duration(180f))
     private var dragging = -1
-    private val channels = listOf("Hue", "Saturation", "Brightness", "Opacity")
-    private val channelHeight = 11
+    private val channels = listOf("Hue", "Sat", "Bri", "Alpha")
+    private val channelHeight = 12
 
-    private val expandedHeight get() = channels.size * channelHeight + 13
+    private val expandedHeight get() = channels.size * channelHeight + 15
 
     override val height: Int get() = Style.ROW_HEIGHT + (expandedHeight * open.value).roundToInt()
 
@@ -293,11 +307,16 @@ class ColorElement(private val color: ColorValue) : SettingElement<DyroxColor>(c
         return Color.RGBtoHSB(c.red, c.green, c.blue, null)
     }
 
+    private val trackX get() = x + Style.PADDING + 30
+    private val trackWidth get() = width - Style.PADDING * 2 - 30
+
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         open.animateTo(if (expanded) 1f else 0f)
-        label(g, color = if (isHovered(mouseX, mouseY)) Style.TEXT else Style.TEXT_DIM)
-        Draw.roundedOutlined(g, x + width - Style.PADDING - 16, y + 3, 16, 8, 3, color.value.argb or (0xFF shl 24), Style.BORDER)
-        if (color.value.rainbow) Draw.text(g, "~", x + width - Style.PADDING - 24, y + 3, Style.accent)
+        label(g, mouseY in y until y + Style.ROW_HEIGHT && mouseX in x until x + width)
+        val swatchX = x + width - Style.PADDING - 7
+        Draw.circle(g, swatchX, y + Style.ROW_HEIGHT / 2, 5, color.value.argb or (0xFF shl 24))
+        Draw.roundedRing(g, swatchX - 5, y + Style.ROW_HEIGHT / 2 - 5, 10, 10, 5, Glass.RIM)
+        if (color.value.rainbow) Draw.text(g, "~", swatchX - 15, Style.textY(y, Style.ROW_HEIGHT), Style.accent)
         if (open.value <= 0.01f) return
 
         g.enableScissor(x, y + Style.ROW_HEIGHT, x + width, y + height)
@@ -305,21 +324,19 @@ class ColorElement(private val color: ColorValue) : SettingElement<DyroxColor>(c
         val values = floatArrayOf(hsb[0], hsb[1], hsb[2], color.value.alpha / 255f)
         channels.forEachIndexed { i, name ->
             val rowY = y + Style.ROW_HEIGHT + i * channelHeight
-            Draw.text(g, name.take(3), x + Style.PADDING + 4, rowY + 2, Style.TEXT_MUTED)
-            val trackX = x + Style.PADDING + 26
-            val trackWidth = width - Style.PADDING * 2 - 26
+            Draw.text(g, name, x + Style.PADDING + 3, Style.textY(rowY, channelHeight), Glass.TEXT_MUTED)
             if (i == 0) {
-                // Hue strip.
-                for (step in 0 until trackWidth) Draw.rect(g, trackX + step, rowY + 4, 1, 3, Color.HSBtoRGB(step / trackWidth.toFloat(), 1f, 1f))
+                // Hue strip, then the knob on top.
+                for (step in 0 until trackWidth) Draw.rect(g, trackX + step, rowY + 5, 1, 3, Color.HSBtoRGB(step / trackWidth.toFloat(), 0.8f, 1f))
+                val kx = trackX + (trackWidth * values[0]).roundToInt()
+                Draw.circle(g, kx, rowY + 6, 4, Glass.KNOB)
             } else {
-                Draw.roundedRect(g, trackX, rowY + 4, trackWidth, 3, 1, Style.TRACK)
-                Draw.roundedRect(g, trackX, rowY + 4, (trackWidth * values[i]).roundToInt(), 3, 1, Style.accent)
+                sliderTrack(g, trackX, rowY + 4, trackWidth, 0f, values[i], listOf(values[i] to (dragging == i)))
             }
-            Draw.circle(g, trackX + (trackWidth * values[i]).roundToInt(), rowY + 5, 2, Style.TEXT)
         }
-        val switchY = y + Style.ROW_HEIGHT + channels.size * channelHeight
-        Draw.roundedRect(g, x + Style.PADDING + 4, switchY + 3, 7, 7, 2, if (color.value.rainbow) Style.accent else Style.TRACK)
-        Draw.text(g, "Rainbow", x + Style.PADDING + 15, switchY + 3, Style.TEXT_DIM)
+        val switchY = y + Style.ROW_HEIGHT + channels.size * channelHeight + 1
+        Draw.roundedRect(g, x + Style.PADDING + 3, switchY + 2, 9, 9, 3, if (color.value.rainbow) Style.accent else Glass.TRACK)
+        Draw.text(g, "Rainbow", x + Style.PADDING + 17, Style.textY(switchY, 13), Glass.TEXT_DIM)
         g.disableScissor()
     }
 
@@ -348,14 +365,11 @@ class ColorElement(private val color: ColorValue) : SettingElement<DyroxColor>(c
     }
 
     private fun update(mouseX: Double) {
-        val trackX = x + Style.PADDING + 26
-        val trackWidth = width - Style.PADDING * 2 - 26
         val t = ((mouseX - trackX) / trackWidth).toFloat().coerceIn(0f, 1f)
         val hsb = hsb()
-        val alpha = color.value.alpha
-        val (h, s, b, a) = listOf(hsb[0], hsb[1], hsb[2], alpha / 255f).toMutableList().also { it[dragging] = t }
-        val rgb = Color.HSBtoRGB(h, s, b) and 0xFFFFFF
-        color.value = color.value.copy(argb = ((a * 255).roundToInt() shl 24) or rgb)
+        val values = mutableListOf(hsb[0], hsb[1], hsb[2], color.value.alpha / 255f).also { it[dragging] = t }
+        val rgb = Color.HSBtoRGB(values[0], values[1], values[2]) and 0xFFFFFF
+        color.value = color.value.copy(argb = ((values[3] * 255).roundToInt() shl 24) or rgb)
     }
 }
 
@@ -364,14 +378,16 @@ class TextElement(private val text: TextValue) : SettingElement<String>(text) {
     private val focused get() = Focus.element === this
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g)
-        val boxX = x + width / 2
+        label(g, isHovered(mouseX, mouseY))
         val boxWidth = width / 2 - Style.PADDING
-        Draw.roundedRect(g, boxX, y + 2, boxWidth, Style.ROW_HEIGHT - 4, 3, if (focused) Style.HOVER else Style.TRACK)
-        val caret = if (focused && System.currentTimeMillis() / 500 % 2 == 0L) "_" else ""
+        val boxX = x + width - Style.PADDING - boxWidth
+        val h = Style.ROW_HEIGHT - 3
+        Draw.roundedRect(g, boxX, y + 1, boxWidth, h, h / 2, if (focused) Glass.BODY_STRONG else Glass.HOVER)
+        Draw.roundedRing(g, boxX, y + 1, boxWidth, h, h / 2, if (focused) Style.accent else Glass.DIVIDER)
+        val caret = if (focused && System.currentTimeMillis() / 500 % 2 == 0L) "|" else ""
         val shown = text.value.takeLast(40)
-        val fitted = if (Draw.width(shown + caret) > boxWidth - 4) "…" + shown.takeLast(8) + caret else shown + caret
-        Draw.text(g, fitted, boxX + 3, y + 3, Style.TEXT)
+        val fitted = if (Draw.width(shown + caret) > boxWidth - 10) "…" + shown.takeLast(8) + caret else shown + caret
+        Draw.text(g, fitted, boxX + 5, Style.textY(y, Style.ROW_HEIGHT), Glass.TEXT)
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -399,13 +415,13 @@ class KeyElement(private val key: KeyValue) : SettingElement<KeyBind>(key) {
     private val listening get() = Focus.element === this
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        label(g, "Bind", if (isHovered(mouseX, mouseY)) Style.TEXT else Style.TEXT_DIM)
+        label(g, isHovered(mouseX, mouseY), "Bind")
         val text = when {
-            listening -> "press a key…"
-            key.value.mode == BindMode.HOLD && key.value.isBound -> KeyNames.label(key.value.key) + " (hold)"
+            listening -> "Press a key…"
+            key.value.mode == BindMode.HOLD && key.value.isBound -> KeyNames.label(key.value.key) + " · hold"
             else -> KeyNames.label(key.value.key)
         }
-        valueText(g, text, if (listening) Style.accent else Style.TEXT)
+        chip(g, text, x + width - Style.PADDING, y, Style.ROW_HEIGHT, if (listening) Style.accent else Glass.TEXT, width / 2 - 12)
     }
 
     override fun tooltip() = "Left click to set, right click for toggle/hold"
@@ -430,7 +446,7 @@ class KeyElement(private val key: KeyValue) : SettingElement<KeyBind>(key) {
     }
 }
 
-/** Choice row for the mode, followed by the active mode's own settings (indented). */
+/** Mode chip, followed by the active mode's own settings (indented). */
 class ModeElement(private val mode: ModeValue<*>) : SettingElement<Any?>(@Suppress("UNCHECKED_CAST") (mode as Value<Any?>)) {
     private var children: List<Element> = emptyList()
     private var builtFor: Any? = null
@@ -450,17 +466,17 @@ class ModeElement(private val mode: ModeValue<*>) : SettingElement<Any?>(@Suppre
 
     override fun render(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         ensureChildren()
-        label(g, color = if (mouseY in y until y + Style.ROW_HEIGHT && mouseX in x until x + width) Style.TEXT else Style.TEXT_DIM)
-        valueText(g, mode.value.name, Style.accent)
+        label(g, mouseY in y until y + Style.ROW_HEIGHT && mouseX in x until x + width)
+        chip(g, mode.value.name, x + width - Style.PADDING, y, Style.ROW_HEIGHT, Style.accent, width / 2 - 12)
         var childY = y + Style.ROW_HEIGHT
         for (child in children.filter { it.visible }) {
-            child.x = x + 4
+            child.x = x + 5
             child.y = childY
-            child.width = width - 4
+            child.width = width - 5
             child.render(g, mouseX, mouseY)
             childY += child.height
         }
-        if (children.isNotEmpty()) Draw.rect(g, x + 2, y + Style.ROW_HEIGHT, 1, childY - y - Style.ROW_HEIGHT, Colors.withAlpha(Style.accent, 90))
+        if (children.isNotEmpty()) Draw.roundedRect(g, x + 3, y + Style.ROW_HEIGHT + 1, 2, childY - y - Style.ROW_HEIGHT - 2, 1, Colors.withAlpha(Style.accent, 110))
     }
 
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
@@ -510,7 +526,7 @@ object SettingElements {
         else -> null
     }
 
-    private fun formatFloat(value: Float, step: Float): String {
+    fun formatFloat(value: Float, step: Float): String {
         val decimals = when {
             step >= 1f -> 0
             step >= 0.1f -> 1

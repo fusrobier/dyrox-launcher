@@ -4,6 +4,7 @@ import net.dyrox.client.render.Animated
 import net.dyrox.client.render.Colors
 import net.dyrox.client.render.Draw
 import net.dyrox.client.render.Easing
+import net.dyrox.client.render.Glass
 import net.dyrox.shared.theme.DyroxPalette
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import java.util.concurrent.CopyOnWriteArrayList
@@ -59,13 +60,13 @@ object Notifications {
             val y = screenHeight - 6 - HEIGHT - (toast.position.value * (HEIGHT + GAP)).toInt()
             val alpha = progress
 
-            Draw.roundedOutlined(g, x, y, WIDTH, HEIGHT, 5, Colors.fade(DyroxPalette.SURFACE, alpha * 0.95f), Colors.fade(DyroxPalette.BORDER, alpha))
-            Draw.roundedRect(g, x + 4, y + 6, 3, HEIGHT - 12, 1, Colors.fade(toast.type.color, alpha))
-            Draw.text(g, Draw.ellipsize(toast.title, WIDTH - 20), x + 12, y + 5, Colors.fade(DyroxPalette.TEXT_PRIMARY, alpha))
-            Draw.text(g, Draw.ellipsize(toast.message, WIDTH - 20), x + 12, y + 16, Colors.fade(DyroxPalette.TEXT_SECONDARY, alpha))
+            Draw.glass(g, x, y, WIDTH, HEIGHT, 10, tint = Glass.HUD, alpha = alpha)
+            Draw.circle(g, x + 9, y + HEIGHT / 2, 3, Colors.fade(toast.type.color, alpha))
+            Draw.text(g, Draw.ellipsize(toast.title, WIDTH - 26, bold = true), x + 17, y + 5, Colors.fade(Glass.TEXT, alpha), bold = true)
+            Draw.text(g, Draw.ellipsize(toast.message, WIDTH - 26), x + 17, y + 16, Colors.fade(Glass.TEXT_DIM, alpha))
             // Remaining-time bar along the bottom edge.
             val remaining = 1f - ((System.currentTimeMillis() - toast.createdAt) / toast.durationMillis.toFloat()).coerceIn(0f, 1f)
-            Draw.rect(g, x + 5, y + HEIGHT - 3, ((WIDTH - 10) * remaining).toInt(), 1, Colors.fade(toast.type.color, alpha * 0.8f))
+            Draw.roundedRect(g, x + 10, y + HEIGHT - 4, ((WIDTH - 20) * remaining).toInt(), 2, 1, Colors.fade(toast.type.color, alpha * 0.8f))
             slot++
         }
     }

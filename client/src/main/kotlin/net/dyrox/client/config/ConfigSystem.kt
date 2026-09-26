@@ -50,12 +50,13 @@ class ConfigSystem(
 
     /** Suppresses autosave marking while a profile is being applied. */
     @Volatile
-    private var loading = false
+    var isLoading = false
+        private set
 
     /** Call once all configurables exist: marks the config dirty whenever any setting changes. */
     fun trackChanges() {
         sections().values.flatten().flatMap { it.allValues() }.forEach { value ->
-            value.onChange { if (!loading) markDirty() }
+            value.onChange { if (!isLoading) markDirty() }
         }
     }
 
@@ -96,7 +97,7 @@ class ConfigSystem(
         } else {
             null
         }
-        loading = true
+        isLoading = true
         try {
             for ((sectionName, configurables) in sections()) {
                 val section = root?.get(sectionName)?.jsonObject
@@ -107,7 +108,7 @@ class ConfigSystem(
                 }
             }
         } finally {
-            loading = false
+            isLoading = false
         }
         root?.get("version")?.jsonPrimitive?.int?.let { if (it > VERSION) problems += "$profile.json was written by a newer Dyrox version" }
         activeProfile = profile

@@ -115,6 +115,6 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 | 3 | Accounts: Microsoft device-code/browser OAuth → XBL → XSTS → Minecraft; encrypted vault; alt manager | done (in-game part after Phase 5) |
 | 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | done |
 | 5 | Client core: event bus, modules, settings, config profiles, commands; IPC client + launcher integration | done |
-| 6 | ClickGUI, HUD, notifications, in-game alt manager | next |
-| 7 | Starter modules per category | |
+| 6 | Liquid Glass ClickGUI, HUD, notifications, in-game alt manager | done |
+| 7 | Starter modules per category | next |
 | 8 | Polish, packaging, docs | |

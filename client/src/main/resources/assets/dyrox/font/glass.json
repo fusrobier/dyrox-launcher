@@ -1,0 +1,5 @@
+{
+  "providers": [
+    { "type": "ttf", "file": "dyrox:inter-medium.ttf", "size": 8.5, "oversample": 4.0, "shift": [0.0, 1.0] }
+  ]
+}

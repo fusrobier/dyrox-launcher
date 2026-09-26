@@ -1,0 +1,5 @@
+{
+  "providers": [
+    { "type": "ttf", "file": "dyrox:inter-semibold.ttf", "size": 9.0, "oversample": 4.0, "shift": [0.0, 1.0] }
+  ]
+}

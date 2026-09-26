@@ -10,6 +10,7 @@ import net.dyrox.client.render.Animated
 import net.dyrox.client.render.Colors
 import net.dyrox.client.render.Draw
 import net.dyrox.client.render.Easing
+import net.dyrox.client.render.Glass
 import net.dyrox.client.ui.hud.NotificationType
 import net.dyrox.client.ui.hud.Notifications
 import net.dyrox.shared.theme.DyroxPalette
@@ -32,7 +33,8 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
 
     init {
         Module.toggleListeners += { module, enabled ->
-            if (this.enabled && notifications && toggleNotifications && !module.hidden) {
+            // No toasts for the flips caused by loading a profile at start-up.
+            if (this.enabled && notifications && toggleNotifications && !module.hidden && !DyroxClient.config.isLoading) {
                 Notifications.show(module.name, if (enabled) "Enabled" else "Disabled", if (enabled) NotificationType.SUCCESS else NotificationType.INFO, 1_500)
             }
         }
@@ -57,11 +59,11 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
     private fun renderWatermark(g: GuiGraphicsExtractor, minecraft: Minecraft) {
         val brand = "Dyrox"
         val info = " ${DyroxClient.version} · ${minecraft.fps} FPS"
-        val width = Draw.width(brand) + Draw.width(info) + 12
-        Draw.roundedRect(g, 4, 4, width, 15, 4, Colors.withAlpha(DyroxPalette.BACKGROUND, 190))
-        Draw.roundedRect(g, 4, 4, 2, 15, 1, lineColor(0))
-        Draw.text(g, brand, 10, 8, lineColor(0), shadow = true)
-        Draw.text(g, info, 10 + Draw.width(brand), 8, DyroxPalette.TEXT_SECONDARY, shadow = true)
+        val width = Draw.width(brand, bold = true) + Draw.width(info) + 18
+        Draw.glass(g, 4, 4, width, 16, 8, tint = Glass.HUD, shadow = false)
+        Draw.circle(g, 11, 12, 2, lineColor(0))
+        Draw.text(g, brand, 16, 8, lineColor(0), bold = true)
+        Draw.text(g, info, 16 + Draw.width(brand, bold = true), 8, Glass.TEXT_DIM)
     }
 
     private fun renderArrayList(g: GuiGraphicsExtractor) {
@@ -78,13 +80,13 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
         var y = 4f
         shown.forEachIndexed { index, (module, text) ->
             val progress = slides.getValue(module).value
-            val lineHeight = 11
+            val lineHeight = 12
             val textWidth = Draw.width(text)
             val x = right - ((textWidth + 6) * progress).toInt()
             val top = y.toInt()
-            if (background) Draw.rect(g, x - 3, top, textWidth + 6, lineHeight, Colors.withAlpha(DyroxPalette.BACKGROUND, (160 * progress).toInt()))
-            Draw.rect(g, right, top, 2, lineHeight, Colors.fade(lineColor(index), progress))
-            Draw.text(g, text, x, top + 2, Colors.fade(lineColor(index), progress), shadow = true)
+            if (background) Draw.roundedRect(g, x - 4, top, textWidth + 8, lineHeight - 1, 4, Colors.fade(Glass.HUD, progress))
+            Draw.roundedRect(g, right + 1, top + 2, 2, lineHeight - 4, 1, Colors.fade(lineColor(index), progress))
+            Draw.text(g, text, x, top + 2, Colors.fade(lineColor(index), progress))
             y += lineHeight * progress
         }
     }

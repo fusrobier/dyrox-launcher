@@ -8,6 +8,7 @@ import net.dyrox.client.module.modules.render.ClickGui
 import net.dyrox.client.render.Animated
 import net.dyrox.client.render.Colors
 import net.dyrox.client.render.Draw
+import net.dyrox.client.render.Glass
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import kotlin.math.roundToInt
 
@@ -21,8 +22,8 @@ class PanelState(category: Category) : Configurable(category.displayName) {
 /** One module row: left click toggles, right click expands its settings. */
 class ModuleButton(val module: Module) : Element() {
     val settings: List<Element> = SettingElements.forValues(module.values)
-    private var expanded = false
-    private val open = Animated(0f, ClickGui.duration(200f))
+    private var expanded = module.name.lowercase() in net.dyrox.client.DebugHooks.expandedModules
+    private val open = Animated(if (expanded) 1f else 0f, ClickGui.duration(200f))
     private val highlight = Animated(if (module.enabled) 1f else 0f, ClickGui.duration(160f))
 
     private val settingsHeight get() = settings.filter { it.visible }.sumOf { it.height } + if (settings.isEmpty()) 0 else 3
@@ -37,19 +38,27 @@ class ModuleButton(val module: Module) : Element() {
         val rowHovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + Style.MODULE_HEIGHT
         val on = highlight.value
 
-        if (rowHovered) Draw.rect(g, x, y, width, Style.MODULE_HEIGHT, Style.HOVER)
-        if (on > 0.01f) Draw.rect(g, x, y, width, Style.MODULE_HEIGHT, Colors.fade(Colors.withAlpha(Style.accent, 38), on))
-        Draw.rect(g, x, y + 3, 2, Style.MODULE_HEIGHT - 6, Colors.fade(Style.accent, on))
-        val nameColor = Colors.lerp(if (rowHovered) Style.TEXT else Style.TEXT_DIM, Style.accent, on)
-        Draw.text(g, module.name, x + Style.PADDING + 2, y + 4, nameColor)
+        // Capsule rows: a faint glass capsule on hover, an accent-tinted one when enabled.
+        val capsuleX = x + 4
+        val capsuleWidth = width - 8
+        val capsuleY = y + 1
+        val capsuleHeight = Style.MODULE_HEIGHT - 2
+        if (rowHovered) Draw.roundedRect(g, capsuleX, capsuleY, capsuleWidth, capsuleHeight, Style.ROW_RADIUS, Glass.HOVER)
+        if (on > 0.01f) {
+            Draw.roundedRect(g, capsuleX, capsuleY, capsuleWidth, capsuleHeight, Style.ROW_RADIUS, Colors.fade(Colors.withAlpha(Style.accent, 72), on))
+            Draw.roundedRing(g, capsuleX, capsuleY, capsuleWidth, capsuleHeight, Style.ROW_RADIUS, Colors.fade(Colors.withAlpha(Style.accent, 140), on))
+        }
+        val nameColor = Colors.lerp(if (rowHovered) Glass.TEXT else Glass.TEXT_DIM, Glass.TEXT, on)
+        Draw.text(g, module.name, x + Style.PADDING + 3, Style.textY(y, Style.MODULE_HEIGHT), nameColor, bold = on > 0.5f)
         if (settings.isNotEmpty()) {
-            Draw.text(g, if (expanded) "−" else "+", x + width - Style.PADDING - 5, y + 4, Style.TEXT_MUTED)
+            // Chevron-like indicator: rotates from "›" to "⌄" feel via two glyphs.
+            Draw.text(g, if (expanded) "–" else "···", x + width - Style.PADDING - Draw.width(if (expanded) "–" else "···") - 2, Style.textY(y, Style.MODULE_HEIGHT), Glass.TEXT_MUTED)
         }
 
         if (open.value <= 0.01f) return
         val bottom = y + height
         g.enableScissor(x, y + Style.MODULE_HEIGHT, x + width, bottom)
-        Draw.rect(g, x, y + Style.MODULE_HEIGHT, width, bottom - y - Style.MODULE_HEIGHT, Colors.withAlpha(0x000000, 60))
+        Draw.roundedRect(g, x + 4, y + Style.MODULE_HEIGHT, width - 8, bottom - y - Style.MODULE_HEIGHT - 1, Style.ROW_RADIUS, 0x1A000000)
         var childY = y + Style.MODULE_HEIGHT + 1
         for (child in settings.filter { it.visible }) {
             child.x = x + 2
@@ -114,13 +123,19 @@ class Panel(val category: Category, val state: PanelState, modules: List<Module>
         scroll.animateTo(scrollTarget)
 
         val total = Style.HEADER_HEIGHT + viewport + 4
-        Draw.roundedOutlined(g, x, y, width, total, Style.RADIUS, Colors.withAlpha(Style.PANEL, 245), Style.BORDER)
-        Draw.roundedRect(g, x + 1, y + 1, width - 2, Style.HEADER_HEIGHT - 1, Style.RADIUS - 1, Style.HEADER)
-        Draw.rect(g, x + 1, y + Style.HEADER_HEIGHT - 4, width - 2, 4, Style.HEADER) // square off the header's bottom corners
-        Draw.rect(g, x + 8, y + Style.HEADER_HEIGHT - 1, width - 16, 1, Colors.withAlpha(Style.accent, 160))
-        Draw.text(g, category.displayName, x + 8, y + 6, Style.TEXT)
+        Draw.glass(g, x, y, width, total, Style.RADIUS)
+        val headerTextY = Style.textY(y, Style.HEADER_HEIGHT)
+        Draw.text(g, category.displayName, x + Style.PADDING + 3, headerTextY, Glass.TEXT, bold = true)
         val count = buttons.count { it.module.enabled }
-        if (count > 0) Draw.text(g, count.toString(), x + width - 8 - Draw.width(count.toString()), y + 6, Style.accent)
+        if (count > 0) {
+            // Small accent "badge" with the number of enabled modules.
+            val label = count.toString()
+            val badgeWidth = Draw.width(label) + 8
+            val badgeX = x + width - Style.PADDING - badgeWidth
+            Draw.roundedRect(g, badgeX, y + 6, badgeWidth, 12, 6, Style.accent)
+            Draw.centeredText(g, label, badgeX + badgeWidth / 2, Style.textY(y + 6, 12), 0xFF0B0D10.toInt())
+        }
+        if (viewport > 0) Draw.rect(g, x + 10, y + Style.HEADER_HEIGHT - 1, width - 20, 1, Glass.DIVIDER)
 
         if (viewport <= 0) return
         val top = y + Style.HEADER_HEIGHT
@@ -139,7 +154,7 @@ class Panel(val category: Category, val state: PanelState, modules: List<Module>
         if (content > viewport) {
             val barHeight = (viewport * viewport / content.toFloat()).roundToInt().coerceAtLeast(10)
             val barY = top + ((viewport - barHeight) * (scroll.value / (content - viewport))).roundToInt()
-            Draw.roundedRect(g, x + width - 4, barY, 2, barHeight, 1, Colors.withAlpha(Style.TEXT_DIM, 120))
+            Draw.roundedRect(g, x + width - 4, barY, 2, barHeight, 1, Glass.TEXT_MUTED)
         }
     }
 

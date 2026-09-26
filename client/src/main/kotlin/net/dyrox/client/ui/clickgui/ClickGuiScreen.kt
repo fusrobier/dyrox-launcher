@@ -8,7 +8,7 @@ import net.dyrox.client.render.Animated
 import net.dyrox.client.render.Colors
 import net.dyrox.client.render.Draw
 import net.dyrox.client.render.Easing
-import net.dyrox.shared.theme.DyroxPalette
+import net.dyrox.client.render.Glass
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
@@ -45,7 +45,7 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
      */
     private fun placeUnplacedPanels() {
         var x = 10
-        var y = 34
+        var y = 36
         var rowHeight = 0
         for (panel in panels.filter { it.state.x.value < 0 || it.state.y.value < 0 }) {
             if (x + Style.PANEL_WIDTH > width - 10 && x > 10) {
@@ -55,7 +55,8 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
             }
             panel.state.x.value = x
             panel.state.y.value = y
-            rowHeight = maxOf(rowHeight, Style.HEADER_HEIGHT + 4 + panel.buttons.size.coerceAtMost(6) * Style.MODULE_HEIGHT)
+            // Reserve room for the panel's whole module list (expanded settings may still overlap; panels are draggable).
+            rowHeight = maxOf(rowHeight, (Style.HEADER_HEIGHT + 6 + panel.buttons.size * Style.MODULE_HEIGHT).coerceAtMost(height / 2))
             x += Style.PANEL_WIDTH + 8
         }
     }
@@ -63,8 +64,10 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
     override fun isPauseScreen(): Boolean = false
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
+        // Glass needs something to frost: the world in-game, the menu panorama on the title screen.
+        if (minecraft.level == null) extractPanorama(graphics, a)
         if (ClickGui.blur) extractBlurredBackground(graphics)
-        Draw.rect(graphics, 0, 0, width, height, Colors.withAlpha(DyroxPalette.BACKGROUND, (110 * opening.value.coerceIn(0f, 1f)).toInt()))
+        Draw.rect(graphics, 0, 0, width, height, Colors.fade(Glass.BACKDROP, opening.value.coerceIn(0f, 1f)))
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
@@ -99,21 +102,30 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
     }
 
     private fun renderSearchBar(g: GuiGraphicsExtractor) {
-        val barWidth = 180
-        val x = (width - barWidth) / 2
-        val y = 8
-        Draw.roundedOutlined(g, x, y, barWidth, 18, 9, Colors.withAlpha(Style.PANEL, 240), if (searchFocused) Style.accent else Style.BORDER)
-        val caret = if (searchFocused && System.currentTimeMillis() / 500 % 2 == 0L) "_" else ""
+        val x = (width - SEARCH_WIDTH) / 2
+        Draw.glass(g, x, SEARCH_Y, SEARCH_WIDTH, SEARCH_HEIGHT, SEARCH_HEIGHT / 2, tint = if (searchFocused) Glass.BODY_STRONG else Glass.BODY)
+        if (searchFocused) Draw.roundedRing(g, x, SEARCH_Y, SEARCH_WIDTH, SEARCH_HEIGHT, SEARCH_HEIGHT / 2, Colors.withAlpha(Style.accent, 200))
+        // Magnifier: a small ring with a handle.
+        Draw.roundedRing(g, x + 10, SEARCH_Y + 6, 8, 8, 4, Glass.TEXT_DIM)
+        Draw.rect(g, x + 17, SEARCH_Y + 13, 2, 2, Glass.TEXT_DIM)
+        val textY = Style.textY(SEARCH_Y, SEARCH_HEIGHT)
+        val caret = if (searchFocused && System.currentTimeMillis() / 500 % 2 == 0L) "|" else ""
         if (search.isEmpty() && !searchFocused) {
-            Draw.text(g, "Search modules…", x + 10, y + 5, Style.TEXT_MUTED)
+            Draw.text(g, "Search", x + 24, textY, Glass.TEXT_MUTED)
         } else {
-            Draw.text(g, Draw.ellipsize(search, barWidth - 24) + caret, x + 10, y + 5, Style.TEXT)
+            Draw.text(g, Draw.ellipsize(search, SEARCH_WIDTH - 36) + caret, x + 24, textY, Glass.TEXT)
         }
     }
 
     private fun isOverSearch(mouseX: Double, mouseY: Double): Boolean {
-        val x = (width - 180) / 2
-        return mouseX >= x && mouseX < x + 180 && mouseY >= 8 && mouseY < 26
+        val x = (width - SEARCH_WIDTH) / 2
+        return mouseX >= x && mouseX < x + SEARCH_WIDTH && mouseY >= SEARCH_Y && mouseY < SEARCH_Y + SEARCH_HEIGHT
+    }
+
+    private companion object {
+        const val SEARCH_WIDTH = 200
+        const val SEARCH_HEIGHT = 20
+        const val SEARCH_Y = 8
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {

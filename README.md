@@ -3,7 +3,7 @@
 A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
 Minecraft **26.3**. Windows 11 first, Linux second.
 
-> Work in progress. Phases 2–5 of 8 are done: launcher core, accounts, multi-instance and the client core.
+> Work in progress. Phases 2–6 of 8 are done: launcher core, accounts, multi-instance, client core, and the ClickGUI/HUD/alt manager.
 > See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/AUTH.md](docs/AUTH.md) and [docs/MULTI_INSTANCE.md](docs/MULTI_INSTANCE.md).
 
 ## Features so far
@@ -23,6 +23,9 @@ Minecraft **26.3**. Windows 11 first, Linux second.
 - **Launch with selected accounts**: one click starts one instance per chosen account
 - Conflict-safe: game folders are locked while in use, an account can't play twice, and window titles show instance and account
 - **Dyrox Client** (Fabric, 26.3), installed automatically: event bus, module system with typed settings, JSON config profiles, `.` chat commands (toggle, bind, config, help). See [docs/CLIENT.md](docs/CLIENT.md)
+- **Liquid Glass ClickGUI** (Right Shift): frosted translucent panels, capsule controls, Inter typeface, search, drag and drop, animations
+- **HUD**: glass watermark, animated array list and toast notifications
+- **In-game alt manager** on the multiplayer screen: switch accounts without restarting
 
 Microsoft sign-in needs an Azure app ID approved by Mojang. See [docs/AUTH.md](docs/AUTH.md#azure-app-id-required-for-microsoft-accounts).
 
