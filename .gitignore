@@ -23,3 +23,6 @@ local.properties
 
 # Local launcher data used for dev testing (DYROX_HOME)
 .dyrox-home/
+
+# Logs written by Loom tasks
+client/logs/
