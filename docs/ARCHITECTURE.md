@@ -19,8 +19,13 @@ Dyrox is a Minecraft Java Edition launcher (**Dyrox Launcher**) plus a Fabric ut
 
 ```
 shared/    Pure JVM, no Minecraft classes. Bundled into the mod later, so it depends only on the JDK,
-           kotlinx.coroutines and kotlinx.serialization (both provided in-game by fabric-language-kotlin).
-           http/ HttpService (JDK HttpClient), hash/, io/ AtomicFiles, platform/, auth/, theme/ DyroxPalette
+           kotlinx.coroutines and kotlinx.serialization (both provided in-game by fabric-language-kotlin),
+           plus JNA as compileOnly (Minecraft ships it).
+           http/ HttpService (JDK HttpClient), hash/, io/ AtomicFiles, platform/, theme/ DyroxPalette
+           auth/     Microsoft OAuth (browser+PKCE, device code) → Xbox Live → XSTS → Minecraft services
+           account/  AccountManager: accounts, sessions, auto-refresh, import/export
+           vault/    AES-256-GCM account vault; key via DPAPI / Secret Service / key file
+           See docs/AUTH.md.
 launcher/  Compose Desktop app
            core/manifest  Mojang version manifest (cached on disk for offline use)
            core/version   version JSON model, inheritsFrom resolution and merging
@@ -33,7 +38,9 @@ launcher/  Compose Desktop app
            core/mods      Fabric API (Modrinth); the Dyrox client jar from Phase 5
            core/launch    LaunchCommandBuilder: a pure function, unit-tested against real JSONs
            core/process   GameProcess + log4j XML log parser
-           ui/            theme, components, screens
+           core/settings  launcher.json (Azure client ID; overridable via DYROX_MS_CLIENT_ID)
+           core/accounts  skin cache (textures.minecraft.net only)
+           ui/            theme, components, screens (Play, Accounts, Settings)
            cli/           headless dev CLI
 client/    Fabric mod (Phase 5)
 docs/      this folder
@@ -46,7 +53,11 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 
 ```
 %APPDATA%\DyroxLauncher\            ($XDG_DATA_HOME/dyrox-launcher on Linux; override: DYROX_HOME)
+├─ launcher.json                    settings (no secrets)
+├─ accounts.vault                   encrypted accounts (+ .lock)
+├─ vault.key.dpapi                  vault key, DPAPI-protected (Windows)
 ├─ cache\version_manifest_v2.json
+├─ cache\skins\
 ├─ shared\                          shared by all instances
 │  ├─ versions\<id>\<id>.json|.jar
 │  ├─ libraries\...
@@ -95,8 +106,8 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 |---|---|---|
 | 1 | Architecture | done |
 | 2 | Launcher core: manifest, downloads, Java, Fabric, launch command | done |
-| 3 | Accounts: Microsoft device-code/browser OAuth → XBL → XSTS → Minecraft; encrypted vault; alt manager | next |
-| 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | |
+| 3 | Accounts: Microsoft device-code/browser OAuth → XBL → XSTS → Minecraft; encrypted vault; alt manager | done (in-game part after Phase 5) |
+| 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | next |
 | 5 | Client core: event bus, modules, settings, config profiles, commands | |
 | 6 | ClickGUI and HUD | |
 | 7 | Starter modules per category | |

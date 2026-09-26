@@ -57,7 +57,7 @@ class DownloadManagerTest {
     private fun hitsFor(path: String) = hits[path]?.get() ?: 0
 
     @Test
-    fun `downloads and verifies files into nested directories`() = runBlocking {
+    fun `downloads and verifies files into nested directories`(): Unit = runBlocking {
         val a = dir.resolve("x/y/a.bin")
         val b = dir.resolve("b.bin")
         var last: DownloadProgress? = null
@@ -72,7 +72,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `valid existing files are not downloaded again`() = runBlocking {
+    fun `valid existing files are not downloaded again`(): Unit = runBlocking {
         val a = dir.resolve("a.bin")
         manager.downloadAll(listOf(task("/a.bin", a)))
         manager.downloadAll(listOf(task("/a.bin", a)))
@@ -80,7 +80,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `corrupted existing files are replaced`() = runBlocking {
+    fun `corrupted existing files are replaced`(): Unit = runBlocking {
         val a = dir.resolve("a.bin")
         Files.write(a, ByteArray(150_000))
         manager.downloadAll(listOf(task("/a.bin", a)))
@@ -88,7 +88,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `checksum mismatch is retried then reported, and nothing is written`() = runBlocking {
+    fun `checksum mismatch is retried then reported, and nothing is written`(): Unit = runBlocking {
         val target = dir.resolve("b.bin")
         val error = assertFailsWith<DownloadFailedException> {
             manager.downloadAll(listOf(task("/b.bin", target, sha1 = "0".repeat(40))))
@@ -99,7 +99,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `404 is not retried`() = runBlocking {
+    fun `404 is not retried`(): Unit = runBlocking {
         assertFailsWith<DownloadFailedException> {
             manager.downloadAll(listOf(DownloadTask(url("/missing.bin"), dir.resolve("missing.bin"))))
         }
@@ -107,7 +107,7 @@ class DownloadManagerTest {
     }
 
     @Test
-    fun `one failure does not stop the other downloads`() = runBlocking {
+    fun `one failure does not stop the other downloads`(): Unit = runBlocking {
         val good = dir.resolve("a.bin")
         assertFailsWith<DownloadFailedException> {
             manager.downloadAll(listOf(task("/a.bin", good), DownloadTask(url("/missing.bin"), dir.resolve("m.bin"))))

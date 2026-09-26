@@ -29,10 +29,53 @@ class DevCli(private val core: LauncherCore) {
     suspend fun run(args: List<String>): Int = when (args.firstOrNull()) {
         "versions" -> listVersions(includeSnapshots = "--snapshots" in args)
         "launch" -> launch(args.drop(1))
+        "accounts" -> accounts(args.drop(1))
         else -> {
             println(USAGE)
             if (args.isEmpty()) 0 else 1
         }
+    }
+
+    private suspend fun accounts(args: List<String>): Int {
+        val manager = core.accounts
+        manager.load()
+        when (args.firstOrNull() ?: "list") {
+            "list" -> {
+                println("Vault key protection: ${manager.keyProtection}")
+                val contents = manager.contents.value
+                if (contents.accounts.isEmpty()) println("  (no accounts)")
+                contents.accounts.forEach { account ->
+                    val marker = if (account.id == contents.selectedAccountId) "*" else " "
+                    println(" $marker ${account.username.padEnd(17)} ${account.type.label.padEnd(10)} ${manager.status(account)}")
+                }
+            }
+            "add-offline" -> {
+                val name = args.getOrNull(1) ?: return usageError("accounts add-offline <name>")
+                println("Added ${manager.addOffline(name).username}")
+            }
+            "login" -> {
+                val authenticator = core.microsoftAuthenticator()
+                    ?: return usageError("No Azure client ID configured (Settings, or DYROX_MS_CLIENT_ID)")
+                val result = authenticator.loginWithDeviceCode { prompt ->
+                    println("Open ${prompt.verificationUri} and enter the code: ${prompt.userCode}")
+                }
+                println("Signed in as ${manager.addMicrosoft(result).username}")
+            }
+            "remove" -> {
+                val name = args.getOrNull(1) ?: return usageError("accounts remove <name>")
+                val account = manager.contents.value.accounts.firstOrNull { it.username.equals(name, ignoreCase = true) }
+                    ?: return usageError("No account named $name")
+                manager.remove(account.id)
+                println("Removed ${account.username}")
+            }
+            else -> return usageError("accounts [list|add-offline <name>|login|remove <name>]")
+        }
+        return 0
+    }
+
+    private fun usageError(message: String): Int {
+        System.err.println(message)
+        return 1
     }
 
     private suspend fun listVersions(includeSnapshots: Boolean): Int {
@@ -48,17 +91,13 @@ class DevCli(private val core: LauncherCore) {
         val options = parseOptions(args) ?: return 1
         val versionArg = options.positional ?: "latest"
         val gameVersion = if (versionArg == "latest") core.manifests.manifest().latest.release else versionArg
-        val username = options.values["user"] ?: "Player"
-        if (!OfflineProfiles.isValidName(username)) {
-            System.err.println("'$username' is not a valid Minecraft name (3-16 of A-Z, a-z, 0-9, _)")
-            return 1
-        }
+        val identity = resolveIdentity(options) ?: return 1
 
         val instance = core.defaultInstanceDir
         val request = LaunchRequest(
             gameVersion = gameVersion,
             loader = if ("fabric" in options.flags) LoaderSpec.Fabric() else LoaderSpec.Vanilla,
-            identity = LaunchIdentity.offline(username),
+            identity = identity,
             gameDirectory = instance.resolve("minecraft"),
             nativesDirectory = instance.resolve("natives"),
             maxMemoryMb = options.values["ram"]?.toIntOrNull() ?: 4096,
@@ -99,6 +138,26 @@ class DevCli(private val core: LauncherCore) {
         }
     }
 
+    /** `--user NAME`: throwaway offline identity. `--account NAME`: a stored account. Default: the selected account. */
+    private suspend fun resolveIdentity(options: Options): LaunchIdentity? {
+        options.values["user"]?.let { name ->
+            if (!OfflineProfiles.isValidName(name)) {
+                System.err.println("'$name' is not a valid Minecraft name (3-16 of A-Z, a-z, 0-9, _)")
+                return null
+            }
+            return LaunchIdentity.offline(name)
+        }
+        val contents = core.accounts.load()
+        val account = options.values["account"]?.let { name ->
+            contents.accounts.firstOrNull { it.username.equals(name, ignoreCase = true) }
+                ?: run { System.err.println("No stored account named $name (see: accounts list)"); return null }
+        } ?: contents.selected ?: run {
+            System.err.println("No account selected. Use --user NAME, or add one with: accounts add-offline NAME")
+            return null
+        }
+        return LaunchIdentity.from(core.accounts.session(account.id))
+    }
+
     private data class Options(val positional: String?, val flags: Set<String>, val values: Map<String, String>)
 
     private fun parseOptions(args: List<String>): Options? {
@@ -124,13 +183,18 @@ class DevCli(private val core: LauncherCore) {
     }
 
     private companion object {
-        val VALUE_OPTIONS = setOf("user", "ram", "width", "height")
+        val VALUE_OPTIONS = setOf("user", "account", "ram", "width", "height")
         val USAGE = """
             Dyrox dev CLI
               versions [--snapshots]                 list Minecraft versions
-              launch [<version>|latest] [options]    install and start a version (offline account)
+              accounts [list]                        list stored accounts (* = selected)
+              accounts add-offline NAME              add an offline account
+              accounts login                         Microsoft sign-in with a device code
+              accounts remove NAME                   remove a stored account
+              launch [<version>|latest] [options]    install and start a version
                 --fabric         install Fabric loader + Fabric API
-                --user NAME      offline username (default: Player)
+                --account NAME   use a stored account (default: the selected one)
+                --user NAME      use a throwaway offline name instead
                 --ram MB         max heap (default: 4096)
                 --width W [--height H]
                 --dry-run        prepare everything and print the command, but don't start the game

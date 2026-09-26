@@ -24,11 +24,13 @@ The launcher talks to these public APIs. No code from them is included.
 - Mojang version manifest, version JSONs, assets and Java runtime catalog (`piston-meta.mojang.com`, `launchermeta.mojang.com`, `resources.download.minecraft.net`)
 - Fabric meta API (`meta.fabricmc.net`) for loader profiles
 - Modrinth API (`api.modrinth.com`) for Fabric API downloads
+- Microsoft identity platform, Xbox Live / XSTS and Minecraft services, for Microsoft account sign-in (official, documented flow)
 
 ## Libraries
 
 - [Kotlin](https://kotlinlang.org/), kotlinx.coroutines, kotlinx.serialization (Apache-2.0)
 - [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform) (Apache-2.0)
+- [JNA](https://github.com/java-native-access/jna) (Apache-2.0 / LGPL-2.1), for Windows DPAPI
 - [JUnit 5](https://junit.org/junit5/) (EPL-2.0, test only)
 
 Minecraft is a trademark of Mojang Studios. Dyrox is not an official Minecraft product and is not

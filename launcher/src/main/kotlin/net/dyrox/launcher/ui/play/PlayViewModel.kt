@@ -22,7 +22,7 @@ import net.dyrox.launcher.core.process.GameProcess
 import net.dyrox.launcher.core.process.LogLevel
 import net.dyrox.launcher.core.process.LogLine
 import net.dyrox.launcher.core.process.LogSource
-import net.dyrox.shared.auth.OfflineProfiles
+import net.dyrox.launcher.ui.accounts.AccountsViewModel
 import java.util.concurrent.ConcurrentLinkedQueue
 
 enum class LoaderChoice(val label: String) { VANILLA("Vanilla"), FABRIC("Fabric") }
@@ -36,7 +36,7 @@ sealed interface LaunchUiState {
 }
 
 /** State and actions for the Play screen. All state is read and written on the UI thread. */
-class PlayViewModel(private val core: LauncherCore, private val scope: CoroutineScope) {
+class PlayViewModel(private val core: LauncherCore, private val accounts: AccountsViewModel, private val scope: CoroutineScope) {
     var versions by mutableStateOf<List<VersionManifest.Entry>>(emptyList()); private set
     var loadingVersions by mutableStateOf(false); private set
     var versionsError by mutableStateOf<String?>(null); private set
@@ -47,7 +47,6 @@ class PlayViewModel(private val core: LauncherCore, private val scope: Coroutine
     var showSnapshots by mutableStateOf(false)
     var selectedVersion by mutableStateOf<String?>(null)
     var loader by mutableStateOf(LoaderChoice.FABRIC)
-    var username by mutableStateOf("Player")
     var maxMemoryMb by mutableStateOf(4096)
     var followConsole by mutableStateOf(true)
 
@@ -65,13 +64,14 @@ class PlayViewModel(private val core: LauncherCore, private val scope: Coroutine
 
     fun supportsFabric(version: String): Boolean = fabricVersions?.contains(version) ?: true
 
-    val usernameValid: Boolean get() = OfflineProfiles.isValidName(username)
     val isBusy: Boolean get() = state is LaunchUiState.Preparing || state is LaunchUiState.Running
 
+    /** The account in use comes from the account vault (selected on the Accounts screen or the picker). */
     val canLaunch: Boolean
         get() {
             val version = selectedVersion ?: return false
-            return usernameValid && !isBusy && (loader == LoaderChoice.VANILLA || supportsFabric(version))
+            return accounts.selected != null && !isBusy &&
+                (loader == LoaderChoice.VANILLA || supportsFabric(version))
         }
 
     init {
@@ -107,23 +107,26 @@ class PlayViewModel(private val core: LauncherCore, private val scope: Coroutine
 
     fun launch() {
         val version = selectedVersion ?: return
+        val account = accounts.selected ?: return
         if (!canLaunch) return
-        val instance = core.defaultInstanceDir
-        val request = LaunchRequest(
-            gameVersion = version,
-            loader = if (loader == LoaderChoice.FABRIC) LoaderSpec.Fabric() else LoaderSpec.Vanilla,
-            identity = LaunchIdentity.offline(username),
-            gameDirectory = instance.resolve("minecraft"),
-            nativesDirectory = instance.resolve("natives"),
-            minMemoryMb = minOf(512, maxMemoryMb),
-            maxMemoryMb = maxMemoryMb,
-            systemProperties = mapOf("dyrox.instance" to "default"),
-        )
         state = LaunchUiState.Preparing(LaunchStage.RESOLVING, version, null)
-        log("Launching $version (${loader.label}) as $username [offline]")
+        log("Launching $version (${loader.label}) as ${account.username} [${account.type.label}]")
 
         scope.launch {
             try {
+                // Refreshes the Minecraft token first if it's about to expire.
+                val session = core.accounts.session(account.id)
+                val instance = core.defaultInstanceDir
+                val request = LaunchRequest(
+                    gameVersion = version,
+                    loader = if (loader == LoaderChoice.FABRIC) LoaderSpec.Fabric() else LoaderSpec.Vanilla,
+                    identity = LaunchIdentity.from(session),
+                    gameDirectory = instance.resolve("minecraft"),
+                    nativesDirectory = instance.resolve("natives"),
+                    minMemoryMb = minOf(512, maxMemoryMb),
+                    maxMemoryMb = maxMemoryMb,
+                    systemProperties = mapOf("dyrox.instance" to "default"),
+                )
                 val command = core.gameLauncher.prepare(request) { progress ->
                     // Called from I/O threads; hop to the UI thread (FIFO, so updates stay in order).
                     scope.launch { applyProgress(progress) }

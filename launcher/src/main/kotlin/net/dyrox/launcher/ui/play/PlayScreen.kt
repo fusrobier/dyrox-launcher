@@ -40,6 +40,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.border
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +59,10 @@ import net.dyrox.launcher.core.manifest.VersionManifest
 import net.dyrox.launcher.core.process.LogLevel
 import net.dyrox.launcher.core.process.LogLine
 import net.dyrox.launcher.core.process.LogSource
+import net.dyrox.launcher.ui.accounts.AccountsViewModel
 import net.dyrox.launcher.ui.components.AccentButton
+import net.dyrox.launcher.ui.components.AccountAvatar
+import net.dyrox.launcher.ui.components.AccountTypeTag
 import net.dyrox.launcher.ui.components.Panel
 import net.dyrox.launcher.ui.components.SegmentedToggle
 import net.dyrox.launcher.ui.components.Tag
@@ -64,11 +74,11 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 @Composable
-fun PlayScreen(vm: PlayViewModel, modifier: Modifier = Modifier) {
+fun PlayScreen(vm: PlayViewModel, accounts: AccountsViewModel, onManageAccounts: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         VersionPanel(vm, Modifier.width(320.dp).fillMaxHeight())
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            LaunchPanel(vm, Modifier.fillMaxWidth())
+            LaunchPanel(vm, accounts, onManageAccounts, Modifier.fillMaxWidth())
             ConsolePanel(vm, Modifier.fillMaxWidth().weight(1f))
         }
     }
@@ -152,8 +162,67 @@ private fun VersionRow(entry: VersionManifest.Entry, selected: Boolean, fabric: 
     }
 }
 
+/** Shows the account in use; the dropdown switches accounts or jumps to the Accounts screen. */
 @Composable
-private fun LaunchPanel(vm: PlayViewModel, modifier: Modifier) {
+private fun AccountPicker(accounts: AccountsViewModel, onManageAccounts: () -> Unit, modifier: Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = accounts.selected
+    val shape = RoundedCornerShape(10.dp)
+    Box(modifier) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(DyroxColors.SurfaceElevated)
+                .border(1.dp, DyroxColors.Border, shape)
+                .clickable { if (accounts.accounts.isEmpty()) onManageAccounts() else expanded = true }
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (selected == null) {
+                Text("Add an account to play…", color = DyroxColors.Accent, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            } else {
+                AccountAvatar(selected, accounts.core.skins, size = 28.dp)
+                Text(selected.username, color = DyroxColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                AccountTypeTag(selected.type)
+            }
+            Text("▾", color = DyroxColors.TextSecondary)
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            containerColor = DyroxColors.SurfaceElevated,
+        ) {
+            accounts.accounts.forEach { account ->
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AccountAvatar(account, accounts.core.skins, size = 24.dp)
+                            Text(account.username, color = DyroxColors.TextPrimary)
+                            AccountTypeTag(account.type)
+                        }
+                    },
+                    onClick = {
+                        accounts.select(account)
+                        expanded = false
+                    },
+                )
+            }
+            HorizontalDivider(color = DyroxColors.Border)
+            DropdownMenuItem(
+                text = { Text("Manage accounts…", color = DyroxColors.Accent) },
+                onClick = {
+                    expanded = false
+                    onManageAccounts()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LaunchPanel(vm: PlayViewModel, accounts: AccountsViewModel, onManageAccounts: () -> Unit, modifier: Modifier) {
     val version = vm.selectedVersion
     Panel(modifier, title = "Launch") {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
@@ -171,16 +240,8 @@ private fun LaunchPanel(vm: PlayViewModel, modifier: Modifier) {
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                FieldLabel("Offline username  ·  Microsoft accounts arrive in Phase 3")
-                OutlinedTextField(
-                    value = vm.username,
-                    onValueChange = { vm.username = it.take(16) },
-                    singleLine = true,
-                    isError = !vm.usernameValid,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = dyroxTextFieldColors(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                FieldLabel("Account")
+                AccountPicker(accounts, onManageAccounts, Modifier.fillMaxWidth())
             }
         }
 

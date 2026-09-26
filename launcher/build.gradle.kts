@@ -12,6 +12,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(libs.compose.material3)
     implementation(libs.kotlinx.coroutines.swing)
+    // Windows DPAPI for the account vault key (:shared only compiles against it).
+    implementation(libs.jna.platform)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
@@ -38,7 +40,8 @@ compose.desktop {
             packageVersion = "0.1.0"
             vendor = "Dyrox"
             // Modules the jlinked runtime needs beyond what Compose detects automatically.
-            modules("java.net.http", "jdk.crypto.ec", "jdk.zipfs")
+            // jdk.httpserver: loopback redirect receiver for the browser sign-in.
+            modules("java.net.http", "jdk.crypto.ec", "jdk.zipfs", "jdk.httpserver")
             windows {
                 menu = true
                 shortcut = true
@@ -61,5 +64,6 @@ tasks.register<JavaExec>("runCli") {
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("net.dyrox.launcher.cli.DevCliKt")
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) })
+    jvmArgs("--enable-native-access=ALL-UNNAMED") // JNA (DPAPI) loads native code
     standardInput = System.`in`
 }

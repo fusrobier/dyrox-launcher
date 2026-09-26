@@ -8,8 +8,12 @@ plugins {
 dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
+    // Windows DPAPI for the account vault. Minecraft ships JNA; the launcher adds it itself.
+    compileOnly(libs.jna.platform)
 
     testImplementation(kotlin("test"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.jna.platform)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

@@ -1,5 +1,7 @@
 package net.dyrox.launcher.core.launch
 
+import net.dyrox.shared.account.AccountType
+import net.dyrox.shared.account.GameSession
 import net.dyrox.shared.auth.OfflineProfiles
 import net.dyrox.shared.auth.toUndashedString
 import java.nio.file.Path
@@ -22,6 +24,15 @@ data class LaunchIdentity(
     companion object {
         const val USER_TYPE_MSA = "msa"
         const val USER_TYPE_OFFLINE = "legacy"
+
+        /** From a stored account's session (Microsoft or offline). */
+        fun from(session: GameSession): LaunchIdentity = LaunchIdentity(
+            username = session.username,
+            uuid = session.uuid,
+            accessToken = session.accessToken,
+            userType = if (session.type == AccountType.MICROSOFT) USER_TYPE_MSA else USER_TYPE_OFFLINE,
+            xuid = session.xuid ?: "0",
+        )
 
         fun offline(username: String): LaunchIdentity = LaunchIdentity(
             username = username,

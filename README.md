@@ -3,7 +3,8 @@
 A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
 Minecraft **26.3**. Windows 11 first, Linux second.
 
-> Work in progress. Phase 2 of 8 (launcher core) is done. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+> Work in progress. Phases 2 (launcher core) and 3 (accounts) of 8 are done.
+> See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/AUTH.md](docs/AUTH.md).
 
 ## Features so far
 
@@ -13,7 +14,12 @@ Minecraft **26.3**. Windows 11 first, Linux second.
 - Installs the right Java runtime for each version from Mojang (Java 25 for 26.3, Java 8 for 1.8.9, ...)
 - Correct launch commands for modern (1.13+) and legacy versions, with the access token redacted in logs
 - Live, colour-coded game console (parses Minecraft's log4j XML output)
-- Offline profiles (username only) with vanilla-compatible offline UUIDs
+- **Alt manager** with skin heads, account type, last used and a token-validity indicator; add, remove, select, rename, import and export (never exports tokens)
+- **Microsoft accounts** through the official OAuth flow (browser with PKCE, or device code) → Xbox Live → XSTS → Minecraft, with automatic token refresh
+- **Offline profiles** (username only, clearly labelled) with vanilla-compatible offline UUIDs
+- Accounts **encrypted on disk** (AES-256-GCM; key protected by Windows DPAPI or the Linux keyring)
+
+Microsoft sign-in needs an Azure app ID approved by Mojang. See [docs/AUTH.md](docs/AUTH.md#azure-app-id-required-for-microsoft-accounts).
 
 ## Requirements
 
@@ -31,7 +37,9 @@ Headless dev CLI:
 
 ```bash
 ./gradlew :launcher:runCli --args="versions"
-./gradlew :launcher:runCli --args="launch 26.3 --fabric --user Steve"
+./gradlew :launcher:runCli --args="accounts add-offline Steve"
+./gradlew :launcher:runCli --args="accounts login"
+./gradlew :launcher:runCli --args="launch 26.3 --fabric"
 ./gradlew :launcher:runCli --args="launch 1.8.9 --dry-run"
 ```
 

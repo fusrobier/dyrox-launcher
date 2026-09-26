@@ -1,9 +1,11 @@
 package net.dyrox.shared.io
 
 import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.UUID
 
 object AtomicFiles {
@@ -20,6 +22,24 @@ object AtomicFiles {
     }
 
     fun writeString(target: Path, text: String) = write(target, text.toByteArray(Charsets.UTF_8))
+
+    /**
+     * Like [write], but on POSIX systems the file is created owner-only (`rw-------`) before any bytes
+     * are written, so secrets are never briefly world-readable.
+     */
+    fun writePrivate(target: Path, bytes: ByteArray) {
+        target.parent?.let(Files::createDirectories)
+        val temp = tempSibling(target)
+        try {
+            if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                Files.createFile(temp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+            }
+            Files.write(temp, bytes)
+            move(temp, target)
+        } finally {
+            Files.deleteIfExists(temp)
+        }
+    }
 
     /** Moves [source] over [target], atomically where the file system supports it. */
     fun move(source: Path, target: Path) {
