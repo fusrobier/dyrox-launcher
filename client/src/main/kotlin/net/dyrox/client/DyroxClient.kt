@@ -21,6 +21,10 @@ import net.dyrox.client.input.MinecraftKeys
 import net.dyrox.client.integration.LauncherBridge
 import net.dyrox.client.module.ModuleManager
 import net.dyrox.client.module.modules.movement.Sprint
+import net.dyrox.client.module.modules.render.ClickGui
+import net.dyrox.client.module.modules.render.Hud
+import net.dyrox.client.ui.clickgui.ClickGuiLayout
+import net.dyrox.client.altmanager.AltManagerScreen
 import net.dyrox.client.util.ChatOutput
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -28,9 +32,12 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
+import net.minecraft.client.Screenshot
+import net.minecraft.client.gui.screens.TitleScreen
 import net.minecraft.resources.Identifier
 import org.slf4j.LoggerFactory
 
@@ -53,7 +60,7 @@ object DyroxClient : ClientModInitializer {
 
         config = ConfigSystem(
             dir = FabricLoader.getInstance().configDir.resolve(MOD_ID),
-            sections = { mapOf("modules" to modules.modules) },
+            sections = { mapOf("modules" to modules.modules, "gui" to ClickGuiLayout.states.values.toList()) },
         )
         // The launcher's per-instance profile wins; otherwise continue with the last one used.
         val profile = LauncherBridge.profile?.takeIf(ConfigSystem::isValidName) ?: config.activeProfile
@@ -64,6 +71,7 @@ object DyroxClient : ClientModInitializer {
         registerCommands()
         hookFabricEvents()
         LauncherBridge.connect(version)
+        AltManagerScreen.registerButton()
 
         logger.info(
             "Dyrox Client {} ready: {} modules, {} commands, profile '{}' ({} ms)",
@@ -72,8 +80,8 @@ object DyroxClient : ClientModInitializer {
     }
 
     private fun registerModules() {
-        // Phase 7 adds the full module set; Sprint proves the pipeline (tick event, keybind, config).
-        modules.register(Sprint)
+        // Phase 7 adds the full module set.
+        modules.register(ClickGui, Hud, Sprint)
     }
 
     private fun registerCommands() {
@@ -120,6 +128,27 @@ object DyroxClient : ClientModInitializer {
             LauncherBridge.status("menu")
         }
         ClientLifecycleEvents.CLIENT_STARTED.register { LauncherBridge.status("title_screen") }
+
+        // Dev aid for screenshots and UI testing: -Ddyrox.debug.screen=clickgui|altmanager opens that
+        // screen the first time the title screen appears (after any first-run onboarding).
+        System.getProperty("dyrox.debug.screen")?.let { debugScreen ->
+            var opened = false
+            ScreenEvents.AFTER_INIT.register { minecraft, screen, _, _ ->
+                if (opened || screen !is TitleScreen) return@register
+                opened = true
+                when (debugScreen) {
+                    "clickgui" -> ClickGui.trigger()
+                    "altmanager" -> minecraft.execute { minecraft.gui.setScreen(AltManagerScreen(screen)) }
+                }
+                // Framebuffer screenshot a few seconds later (screenshots/dyrox-debug.png), for exact colours.
+                Thread({
+                    Thread.sleep(4_000)
+                    minecraft.execute {
+                        Screenshot.grab(minecraft.gameDirectory, "dyrox-debug.png", minecraft.gameRenderer.mainRenderTarget(), 1) { logger.info("Debug screenshot: {}", it.string) }
+                    }
+                }, "Dyrox debug screenshot").apply { isDaemon = true }.start()
+            }
+        }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             Events.post(ClientShutdownEvent)
             runCatching { config.save() }.onFailure { logger.error("Could not save config on exit", it) }

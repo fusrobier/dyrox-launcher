@@ -5,6 +5,7 @@
   "client": [
     "ConnectionMixin",
     "KeyboardHandlerMixin",
+    "MinecraftAccessor",
     "MinecraftMixin"
   ],
   "injectors": {

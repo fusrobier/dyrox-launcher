@@ -7,6 +7,7 @@ import net.dyrox.client.input.KeyNames
 import net.dyrox.client.module.Category
 import net.dyrox.client.module.Module
 import net.dyrox.client.module.ModuleManager
+import net.dyrox.client.module.TriggerModule
 
 /** Resolves user key input to a valid Minecraft key name; throws [CommandException] if unknown. */
 fun interface KeyResolver {
@@ -31,6 +32,10 @@ class HelpCommand(private val manager: CommandManager) : Command("help", "Lists 
 class ToggleCommand(private val modules: ModuleManager) : Command("toggle", "Turns a module on or off", "<module> [on|off]", listOf("t")) {
     override fun execute(args: List<String>, output: CommandOutput) {
         val module = modules[args.firstOrNull() ?: usageError()] ?: fail("No module '${args[0]}'")
+        if (module is TriggerModule) {
+            module.trigger()
+            return
+        }
         when (args.getOrNull(1)?.lowercase()) {
             null -> module.toggle()
             "on", "true", "enable" -> module.enabled = true

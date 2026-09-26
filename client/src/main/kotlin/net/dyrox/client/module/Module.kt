@@ -52,6 +52,11 @@ abstract class Module(
 
     init {
         enabledValue.onChange { on ->
+            // A TriggerModule only runs its action (onEnable resets it to off); it is never reported as toggled.
+            if (this is TriggerModule) {
+                if (on) onEnable()
+                return@onChange
+            }
             try {
                 if (on) onEnable() else onDisable()
             } catch (e: Exception) {
@@ -79,6 +84,21 @@ abstract class Module(
 
         /** Notified on every enable/disable (notifications, array list animation). */
         val toggleListeners = java.util.concurrent.CopyOnWriteArrayList<(Module, Boolean) -> Unit>()
+    }
+}
+
+/**
+ * A module whose key performs an action instead of toggling a state (e.g. opening the ClickGUI).
+ * It is never "enabled"; its settings still work like any other module's.
+ */
+abstract class TriggerModule(name: String, category: Category, description: String, defaultKey: String? = null) :
+    Module(name, category, description, defaultKey, hidden = true) {
+    abstract fun trigger()
+
+    override fun onEnable() {
+        // Enabling (from a command or an old config) just runs the action.
+        enabled = false
+        trigger()
     }
 }
 
@@ -114,6 +134,10 @@ class ModuleManager(bus: EventBus = Events) : Listenable {
         for (module in registered) {
             val bind = module.bind.value
             if (bind.key != event.keyName) continue
+            if (module is TriggerModule) {
+                if (event.action == KeyEvent.PRESS) module.trigger()
+                continue
+            }
             when (bind.mode) {
                 BindMode.TOGGLE -> if (event.action == KeyEvent.PRESS) module.toggle()
                 BindMode.HOLD -> module.enabled = event.action == KeyEvent.PRESS
