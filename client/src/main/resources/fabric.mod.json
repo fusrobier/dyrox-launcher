@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "dyrox",
+  "version": "${version}",
+  "name": "Dyrox Client",
+  "description": "Utility client for Dyrox Launcher.",
+  "authors": ["Dyrox"],
+  "license": "GPL-3.0-or-later",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "net.dyrox.client.DyroxClient"
+      }
+    ]
+  },
+  "mixins": ["dyrox.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=25",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=1.14.1"
+  }
+}

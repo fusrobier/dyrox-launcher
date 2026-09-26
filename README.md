@@ -3,7 +3,7 @@
 A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
 Minecraft **26.3**. Windows 11 first, Linux second.
 
-> Work in progress. Phases 2 (launcher core), 3 (accounts) and 4 (multi-instance) of 8 are done.
+> Work in progress. Phases 2–5 of 8 are done: launcher core, accounts, multi-instance and the client core.
 > See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/AUTH.md](docs/AUTH.md) and [docs/MULTI_INSTANCE.md](docs/MULTI_INSTANCE.md).
 
 ## Features so far
@@ -22,6 +22,7 @@ Minecraft **26.3**. Windows 11 first, Linux second.
 - **Multi-instance**: run several games at once, each with its own account. Live status (starting / running / crashed), PID, memory, uptime and a log per game; stop gracefully or kill
 - **Launch with selected accounts**: one click starts one instance per chosen account
 - Conflict-safe: game folders are locked while in use, an account can't play twice, and window titles show instance and account
+- **Dyrox Client** (Fabric, 26.3), installed automatically: event bus, module system with typed settings, JSON config profiles, `.` chat commands (toggle, bind, config, help). See [docs/CLIENT.md](docs/CLIENT.md)
 
 Microsoft sign-in needs an Azure app ID approved by Mojang. See [docs/AUTH.md](docs/AUTH.md#azure-app-id-required-for-microsoft-accounts).
 
@@ -58,7 +59,7 @@ Set `DYROX_HOME` to use another folder.
 |---|---|
 | `shared/` | Code shared by launcher and client: HTTP, hashing, platform, offline profiles, colour palette |
 | `launcher/` | Compose Desktop launcher and its core (manifest, downloads, Java, Fabric, launch command) |
-| `client/` | Fabric mod (from Phase 5) |
+| `client/` | Dyrox Client Fabric mod (`gradlew :client:build`, `:client:runClient`) |
 | `docs/` | Architecture and design notes |
 
 ## License

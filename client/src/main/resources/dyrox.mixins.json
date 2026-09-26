@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "net.dyrox.client.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ConnectionMixin",
+    "KeyboardHandlerMixin",
+    "MinecraftMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

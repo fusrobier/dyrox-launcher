@@ -8,7 +8,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import net.dyrox.launcher.core.download.DownloadManager
 import net.dyrox.launcher.core.download.DownloadProgress
 import net.dyrox.launcher.core.download.DownloadTask
+import net.dyrox.shared.hash.Hashing
 import net.dyrox.shared.http.HttpService
+import net.dyrox.shared.io.AtomicFiles
 import java.io.IOException
 import java.net.URLEncoder
 import java.nio.file.Files
@@ -34,7 +36,7 @@ data class ModrinthFile(
 
 class ModNotAvailableException(message: String) : RuntimeException(message)
 
-/** Installs required mods (Fabric API; the Dyrox client jar from Phase 5) into an instance's `mods` folder. */
+/** Installs required mods (Fabric API, Fabric Language Kotlin, the bundled Dyrox client) into an instance's `mods` folder. */
 class ModInstaller(
     private val http: HttpService,
     private val downloads: DownloadManager,
@@ -50,35 +52,71 @@ class ModInstaller(
 
     /** Makes sure the newest Fabric API for [gameVersion] is in [modsDir] and removes older copies. */
     suspend fun ensureFabricApi(modsDir: Path, gameVersion: String, onProgress: (DownloadProgress) -> Unit = {}): Path =
-        withContext(Dispatchers.IO) {
-            Files.createDirectories(modsDir)
-            val versions = try {
-                modrinthVersions(FABRIC_API_PROJECT, gameVersion, "fabric")
-            } catch (e: IOException) {
-                // Offline: keep whatever Fabric API is already installed.
-                return@withContext installedFabricApi(modsDir).firstOrNull() ?: throw e
-            }
-            val version = versions.filter { it.versionType == "release" }.maxByOrNull { it.datePublished }
-                ?: versions.maxByOrNull { it.datePublished }
-                ?: throw ModNotAvailableException("No Fabric API build for Minecraft $gameVersion on Modrinth")
-            val file = version.files.firstOrNull { it.primary } ?: version.files.firstOrNull()
-                ?: throw ModNotAvailableException("Fabric API ${version.versionNumber} has no files")
+        ensureModrinthMod(FABRIC_API_PROJECT, "fabric-api-", "Fabric API", modsDir, gameVersion, onProgress)
 
-            require(file.filename.none { it == '/' || it == '\\' } && file.filename.endsWith(".jar")) {
-                "Refusing suspicious file name ${file.filename}"
-            }
-            val target = modsDir.resolve(file.filename)
-            downloads.downloadAll(listOf(DownloadTask(file.url, target, file.hashes["sha1"], file.size)), onProgress)
-            installedFabricApi(modsDir).filter { it != target }.forEach(Files::deleteIfExists)
-            target
+    /** Fabric Language Kotlin: the Kotlin runtime the Dyrox client needs. */
+    suspend fun ensureFabricLanguageKotlin(modsDir: Path, gameVersion: String, onProgress: (DownloadProgress) -> Unit = {}): Path =
+        ensureModrinthMod(FABRIC_LANGUAGE_KOTLIN_PROJECT, "fabric-language-kotlin-", "Fabric Language Kotlin", modsDir, gameVersion, onProgress)
+
+    /**
+     * Installs the newest release of a Modrinth [project] for [gameVersion] (SHA-1 verified) and removes
+     * older copies, recognised by [filePrefix]. Offline, an already installed copy is kept.
+     */
+    private suspend fun ensureModrinthMod(
+        project: String,
+        filePrefix: String,
+        displayName: String,
+        modsDir: Path,
+        gameVersion: String,
+        onProgress: (DownloadProgress) -> Unit,
+    ): Path = withContext(Dispatchers.IO) {
+        Files.createDirectories(modsDir)
+        val versions = try {
+            modrinthVersions(project, gameVersion, "fabric")
+        } catch (e: IOException) {
+            return@withContext installed(modsDir, filePrefix).firstOrNull() ?: throw e
         }
+        val version = versions.filter { it.versionType == "release" }.maxByOrNull { it.datePublished }
+            ?: versions.maxByOrNull { it.datePublished }
+            ?: throw ModNotAvailableException("No $displayName build for Minecraft $gameVersion on Modrinth")
+        val file = version.files.firstOrNull { it.primary } ?: version.files.firstOrNull()
+            ?: throw ModNotAvailableException("$displayName ${version.versionNumber} has no files")
 
-    private fun installedFabricApi(modsDir: Path): List<Path> {
+        require(file.filename.none { it == '/' || it == '\\' } && file.filename.endsWith(".jar") && file.filename.startsWith(filePrefix)) {
+            "Refusing unexpected file name ${file.filename}"
+        }
+        val target = modsDir.resolve(file.filename)
+        downloads.downloadAll(listOf(DownloadTask(file.url, target, file.hashes["sha1"], file.size)), onProgress)
+        installed(modsDir, filePrefix).filter { it != target }.forEach(Files::deleteIfExists)
+        target
+    }
+
+    /** What the launcher carries of the Dyrox client (null in builds without it, e.g. some dev setups). */
+    val bundledClient: BundledClient? by lazy { BundledClient.load() }
+
+    /**
+     * Copies the bundled Dyrox client into [modsDir] when it's built for [gameVersion] (updating it if the
+     * bundled jar changed). Returns null if there's no client for this version.
+     */
+    suspend fun ensureDyroxClient(modsDir: Path, gameVersion: String): Path? = withContext(Dispatchers.IO) {
+        val client = bundledClient?.takeIf { it.minecraftVersion == gameVersion } ?: return@withContext null
+        Files.createDirectories(modsDir)
+        val target = modsDir.resolve(BundledClient.FILE_NAME)
+        if (!Files.isRegularFile(target) || Hashing.sha1(target) != client.sha1) AtomicFiles.write(target, client.bytes())
+        target
+    }
+
+    /** Removes the Dyrox client from an instance that has it switched off (only our own file). */
+    fun removeDyroxClient(modsDir: Path) {
+        Files.deleteIfExists(modsDir.resolve(BundledClient.FILE_NAME))
+    }
+
+    private fun installed(modsDir: Path, prefix: String): List<Path> {
         if (!Files.isDirectory(modsDir)) return emptyList()
         return Files.list(modsDir).use { files ->
             files.filter {
                 val name = it.fileName.toString()
-                name.startsWith("fabric-api-") && name.endsWith(".jar")
+                name.startsWith(prefix) && name.endsWith(".jar")
             }.toList()
         }
     }
@@ -86,5 +124,30 @@ class ModInstaller(
     companion object {
         const val MODRINTH_API = "https://api.modrinth.com/v2"
         const val FABRIC_API_PROJECT = "fabric-api"
+        const val FABRIC_LANGUAGE_KOTLIN_PROJECT = "fabric-language-kotlin"
+    }
+}
+
+/** The Dyrox client jar packaged inside the launcher (`/bundled-mods/`), built from `:client`. */
+class BundledClient(val version: String, val minecraftVersion: String, private val resource: String) {
+    val sha1: String by lazy { Hashing.sha1(bytes()) }
+
+    fun bytes(): ByteArray = requireNotNull(BundledClient::class.java.getResourceAsStream(resource)) { "Missing $resource" }.use { it.readBytes() }
+
+    companion object {
+        const val FILE_NAME = "dyrox-client.jar"
+        private const val DIR = "/bundled-mods/"
+
+        fun load(): BundledClient? {
+            val properties = BundledClient::class.java.getResourceAsStream("${DIR}dyrox-client.properties")?.use { stream ->
+                java.util.Properties().apply { load(stream) }
+            } ?: return null
+            if (BundledClient::class.java.getResource(DIR + FILE_NAME) == null) return null
+            return BundledClient(
+                version = properties.getProperty("version", "unknown"),
+                minecraftVersion = properties.getProperty("minecraft_version") ?: return null,
+                resource = DIR + FILE_NAME,
+            )
+        }
     }
 }

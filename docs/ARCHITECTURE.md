@@ -45,7 +45,8 @@ launcher/  Compose Desktop app
                           logs, stop/kill, multi-account launch, IPC handler), ProcessMetrics, WindowControl
            ui/            theme, components, screens (Instances, Running, Accounts, Settings)
            cli/           headless dev CLI
-client/    Fabric mod (Phase 5)
+client/    Dyrox Client, Fabric mod for 26.3 (non-remapping Loom, Mojang names): event bus, modules,
+           settings, config profiles, commands, launcher bridge, mixins. See docs/CLIENT.md and docs/MIXINS.md.
 docs/      this folder
 ```
 
@@ -113,7 +114,7 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 | 2 | Launcher core: manifest, downloads, Java, Fabric, launch command | done |
 | 3 | Accounts: Microsoft device-code/browser OAuth → XBL → XSTS → Minecraft; encrypted vault; alt manager | done (in-game part after Phase 5) |
 | 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | done |
-| 5 | Client core: event bus, modules, settings, config profiles, commands; IPC client + in-game alt manager hookup | next |
-| 6 | ClickGUI and HUD | |
+| 5 | Client core: event bus, modules, settings, config profiles, commands; IPC client + launcher integration | done |
+| 6 | ClickGUI, HUD, notifications, in-game alt manager | next |
 | 7 | Starter modules per category | |
 | 8 | Polish, packaging, docs | |

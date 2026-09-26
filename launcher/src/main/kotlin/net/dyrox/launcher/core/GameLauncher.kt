@@ -21,7 +21,12 @@ sealed interface LoaderSpec {
     data object Vanilla : LoaderSpec
 
     /** [loaderVersion] null = newest stable Fabric loader. */
-    data class Fabric(val loaderVersion: String? = null, val installFabricApi: Boolean = true) : LoaderSpec
+    /** [installDyroxClient]: add the bundled Dyrox client (and Fabric Language Kotlin) when it supports the version. */
+    data class Fabric(
+        val loaderVersion: String? = null,
+        val installFabricApi: Boolean = true,
+        val installDyroxClient: Boolean = true,
+    ) : LoaderSpec
 }
 
 data class LaunchRequest(
@@ -89,10 +94,22 @@ class GameLauncher(private val core: LauncherCore) {
 
             Files.createDirectories(request.gameDirectory)
             val loader = request.loader
-            if (loader is LoaderSpec.Fabric && loader.installFabricApi) {
-                onProgress(LaunchProgress.Stage(LaunchStage.INSTALLING_MODS, "Fabric API"))
-                core.mods.ensureFabricApi(request.gameDirectory.resolve("mods"), version.gameVersion) {
+            if (loader is LoaderSpec.Fabric) {
+                val modsDir = request.gameDirectory.resolve("mods")
+                val download: (net.dyrox.launcher.core.download.DownloadProgress) -> Unit = {
                     onProgress(LaunchProgress.Download(LaunchStage.INSTALLING_MODS, it))
+                }
+                val wantsClient = loader.installDyroxClient && core.mods.bundledClient?.minecraftVersion == version.gameVersion
+                if (loader.installFabricApi || wantsClient) {
+                    onProgress(LaunchProgress.Stage(LaunchStage.INSTALLING_MODS, "Fabric API"))
+                    core.mods.ensureFabricApi(modsDir, version.gameVersion, download)
+                }
+                if (wantsClient) {
+                    onProgress(LaunchProgress.Stage(LaunchStage.INSTALLING_MODS, "Dyrox Client"))
+                    core.mods.ensureFabricLanguageKotlin(modsDir, version.gameVersion, download)
+                    core.mods.ensureDyroxClient(modsDir, version.gameVersion)
+                } else {
+                    core.mods.removeDyroxClient(modsDir)
                 }
             }
 

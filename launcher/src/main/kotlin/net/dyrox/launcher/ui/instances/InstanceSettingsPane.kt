@@ -79,7 +79,26 @@ fun InstanceSettingsPane(vm: InstancesViewModel, instance: InstanceConfig, runni
             }
         }
 
-        Field("Memory · ${"%.1f".format(draft.maxMemoryMb / 1024f)} GB max") {
+        if (draft.loader == LoaderType.FABRIC) {
+            val supported = vm.core.mods.bundledClient?.minecraftVersion
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Switch(draft.dyroxClient, { draft = draft.copy(dyroxClient = it) }, colors = SwitchDefaults.colors(checkedTrackColor = DyroxColors.Accent, checkedThumbColor = DyroxColors.OnAccent))
+                Column {
+                    Text("Dyrox Client", color = DyroxColors.TextPrimary, fontSize = 13.sp)
+                    Text(
+                        when {
+                            supported == null -> "Not bundled with this launcher build."
+                            supported == draft.gameVersion -> "Installed automatically with Fabric Language Kotlin."
+                            else -> "Available for Minecraft $supported only; this instance runs without it."
+                        },
+                        color = DyroxColors.TextMuted,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+        }
+
+        Field("Memory ·${"%.1f".format(draft.maxMemoryMb / 1024f)} GB max") {
             Slider(
                 value = draft.maxMemoryMb.toFloat(),
                 onValueChange = { draft = draft.copy(maxMemoryMb = ((it / 512).roundToInt() * 512).coerceIn(1024, 16384)) },

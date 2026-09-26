@@ -122,6 +122,7 @@ class InstanceRepository(
             gameVersion = template.gameVersion,
             loader = template.loader,
             loaderVersion = template.loaderVersion,
+            dyroxClient = template.dyroxClient,
             minMemoryMb = template.minMemoryMb,
             maxMemoryMb = template.maxMemoryMb,
             jvmArguments = template.jvmArguments,

@@ -102,8 +102,16 @@ class DevCli(private val core: LauncherCore) {
                     supervisor.launchWithAccounts(id, ids)
                 }
                 // Report state changes and memory until every game has exited.
+                val stopAfter = args.getOrNull(args.indexOf("--stop-after") + 1)?.takeIf { "--stop-after" in args }?.toLongOrNull()
+                val startedAt = System.currentTimeMillis()
+                var stopSent = false
                 val last = HashMap<String, String>()
                 while (sessions.any { it.isActive }) {
+                    if (stopAfter != null && !stopSent && System.currentTimeMillis() - startedAt > stopAfter * 1000) {
+                        println("--stop-after reached: stopping gracefully")
+                        supervisor.stopAll()
+                        stopSent = true
+                    }
                     for (s in sessions) {
                         val line = "${s.state.value::class.simpleName} pid=${s.pid} mem=${s.memoryBytes.value?.let { it shr 20 }}MB ipc=${s.ipcConnected}"
                         if (last.put(s.instance.id, line) != line) println("[${s.instance.name} / ${s.account.username}] $line")
@@ -238,7 +246,8 @@ class DevCli(private val core: LauncherCore) {
               accounts remove NAME                   remove a stored account
               instances [list]                       list instances
               instances create NAME [VERSION] [--vanilla]
-              instances launch ID [--accounts A,B]   run an instance (or one per account) and report status
+              instances launch ID [--accounts A,B] [--stop-after SECONDS]
+                                                     run an instance (or one per account) and report status
               launch [<version>|latest] [options]    install and start a version
                 --fabric         install Fabric loader + Fabric API
                 --account NAME   use a stored account (default: the selected one)

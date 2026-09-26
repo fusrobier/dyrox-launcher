@@ -22,6 +22,29 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+// The Dyrox client mod ships inside the launcher and is copied into Fabric instances of its Minecraft version.
+val clientJar = project(":client").tasks.named<Jar>("jar")
+val bundledClientInfo = tasks.register("bundledClientInfo") {
+    val output = layout.buildDirectory.file("bundled/bundled-mods/dyrox-client.properties")
+    val minecraftVersion = providers.gradleProperty("minecraft_version")
+    val clientVersion = project.version.toString()
+    inputs.property("minecraft", minecraftVersion)
+    inputs.property("version", clientVersion)
+    outputs.file(output)
+    doLast {
+        output.get().asFile.apply { parentFile.mkdirs() }
+            .writeText("version=$clientVersion\nminecraft_version=${minecraftVersion.get()}\n")
+    }
+}
+
+tasks.processResources {
+    from(clientJar) {
+        into("bundled-mods")
+        rename { "dyrox-client.jar" }
+    }
+    from(bundledClientInfo.map { layout.buildDirectory.dir("bundled") })
+}
+
 tasks.jar {
     manifest {
         attributes("Implementation-Title" to "Dyrox Launcher", "Implementation-Version" to project.version)

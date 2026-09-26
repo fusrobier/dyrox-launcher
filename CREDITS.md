@@ -30,6 +30,8 @@ The launcher talks to these public APIs. No code from them is included.
 
 - [Kotlin](https://kotlinlang.org/), kotlinx.coroutines, kotlinx.serialization (Apache-2.0)
 - [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform) (Apache-2.0)
+- [Fabric Loader, Fabric API, Fabric Loom, Fabric Language Kotlin](https://fabricmc.net/) (Apache-2.0), mod platform (not redistributed; downloaded from Modrinth at install time)
+- [Mixin](https://github.com/SpongePowered/Mixin) (MIT), via Fabric Loader
 - [JNA](https://github.com/java-native-access/jna) (Apache-2.0 / LGPL-2.1), for Windows DPAPI
 - [JUnit 5](https://junit.org/junit5/) (EPL-2.0, test only)
 

@@ -19,6 +19,8 @@ data class InstanceConfig(
     val loader: LoaderType = LoaderType.FABRIC,
     /** Null = newest stable loader. */
     val loaderVersion: String? = null,
+    /** Install the Dyrox client (Fabric only, and only for the Minecraft version it's built for). */
+    val dyroxClient: Boolean = true,
     /** Account to play with; null = the account selected in the launcher. */
     val accountId: String? = null,
     val minMemoryMb: Int = 512,

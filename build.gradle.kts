@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.compose) apply false
+    alias(libs.plugins.fabric.loom) apply false
 }
 
 allprojects {
@@ -21,18 +22,19 @@ subprojects {
         isReproducibleFileOrder = true
     }
 
-    // :shared and :launcher compile with JDK 25 but emit Java 21 bytecode, so :shared
-    // stays loadable by older Minecraft versions (1.21.x runs on Java 21).
+    // Everything compiles with JDK 25. :shared and :launcher emit Java 21 bytecode so :shared stays
+    // loadable by Minecraft 1.21.x (Java 21); :client targets 25 because it links against 26.3's classes.
+    val javaRelease = if (name == "client") 25 else 21
     plugins.withId("org.jetbrains.kotlin.jvm") {
         extensions.configure<KotlinJvmProjectExtension> {
             jvmToolchain(25)
             compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_21)
-                freeCompilerArgs.add("-Xjdk-release=21")
+                jvmTarget.set(JvmTarget.fromTarget(javaRelease.toString()))
+                freeCompilerArgs.add("-Xjdk-release=$javaRelease")
             }
         }
         tasks.withType<JavaCompile>().configureEach {
-            options.release.set(21)
+            options.release.set(javaRelease)
         }
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()

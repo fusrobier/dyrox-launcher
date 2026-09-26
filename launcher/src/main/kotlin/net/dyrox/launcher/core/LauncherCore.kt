@@ -77,7 +77,7 @@ class LauncherCore(
             gameVersion = instance.gameVersion,
             loader = when (instance.loader) {
                 LoaderType.VANILLA -> LoaderSpec.Vanilla
-                LoaderType.FABRIC -> LoaderSpec.Fabric(instance.loaderVersion)
+                LoaderType.FABRIC -> LoaderSpec.Fabric(instance.loaderVersion, installDyroxClient = instance.dyroxClient)
             },
             identity = identity,
             gameDirectory = instances.gameDirectory(instance),

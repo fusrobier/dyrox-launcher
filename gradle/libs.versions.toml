@@ -8,6 +8,11 @@ compose-material3 = "1.9.0"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 junit = "5.14.4"
+# Fabric (Minecraft 26.3 is unobfuscated: non-remapping Loom, no mappings)
+fabric-loom = "1.18.2"
+fabric-loader = "0.19.5"
+fabric-api = "0.161.0+26.3"
+fabric-language-kotlin = "1.14.1+kotlin.2.4.20"
 # Same JNA Minecraft 26.3 ships, so the vault's DPAPI code also works in-game.
 jna = "5.17.0"
 
@@ -17,6 +22,9 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
+fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
+fabric-language-kotlin = { module = "net.fabricmc:fabric-language-kotlin", version.ref = "fabric-language-kotlin" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
@@ -27,3 +35,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+fabric-loom = { id = "net.fabricmc.fabric-loom", version.ref = "fabric-loom" }

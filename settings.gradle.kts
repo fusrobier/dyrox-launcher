@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "dyrox"
 
-include(":shared", ":launcher")
+include(":shared", ":launcher", ":client")
