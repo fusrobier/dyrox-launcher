@@ -27,7 +27,7 @@ object AutoTool : Module("AutoTool", Category.PLAYER, "Picks the best tool while
             }
             return@handler
         }
-        val state = level.getBlockState((hit as BlockHitResult).blockPos)
+        val state = level.getBlockState(hit.blockPos)
         if (state.isAir) return@handler
         val inventory = player.inventory
         val best = (0..8).maxByOrNull { inventory.getItem(it).getDestroySpeed(state) } ?: return@handler

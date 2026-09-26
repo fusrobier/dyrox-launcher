@@ -39,11 +39,16 @@ object OreEsp : Module("OreESP", Category.RENDER, "Outlines ores through walls."
     private val radius by int("Radius", 3, 1..8, description = "Chunks around you")
     private val chunksPerTick by int("Chunks per tick", 2, 1..16, description = "Higher rescans faster but costs more frame time")
     private val fill by int("Box fill", 50, 0..255)
+    private val maxBoxes by int("Max boxes", 1500, 100..10000, 100, "Only the nearest ores are drawn; keeps the frame rate up with common ores selected")
 
     private class Found(val box: AABB, val color: Int)
 
     private val found = HashMap<Long, List<Found>>()
     private var scanQueue = ArrayDeque<ChunkPos>()
+
+    /** The nearest [maxBoxes] ores, re-sorted a few times a second (sorting every frame would cost more than drawing). */
+    private var visible: List<Found> = emptyList()
+    private var ticks = 0
 
     init {
         // Different ores selected: start over.
@@ -58,12 +63,14 @@ object OreEsp : Module("OreESP", Category.RENDER, "Outlines ores through walls."
     override fun onDisable() {
         found.clear()
         scanQueue.clear()
+        visible = emptyList()
     }
 
     @Suppress("unused")
     private val onWorld = handler<WorldChangeEvent> {
         found.clear()
         scanQueue.clear()
+        visible = emptyList()
     }
 
     @Suppress("unused")
@@ -90,11 +97,15 @@ object OreEsp : Module("OreESP", Category.RENDER, "Outlines ores through walls."
             if (!level.hasChunk(pos.x, pos.z)) return@repeat
             found[pos.pack()] = scanChunk(pos, selected)
         }
+        if (ticks++ % 5 == 0) {
+            val eye = player.eyePosition
+            visible = found.values.flatten().sortedBy { it.box.center.distanceToSqr(eye) }.take(maxBoxes)
+        }
     }
 
     @Suppress("unused")
     private val onGizmos = handler<WorldGizmoEvent> {
-        for (list in found.values) for (entry in list) WorldShapes.box(entry.box, entry.color, fill)
+        for (entry in visible) WorldShapes.box(entry.box, entry.color, fill)
     }
 
     private fun scanChunk(pos: ChunkPos, selected: List<Ore>): List<Found> {

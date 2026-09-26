@@ -1,5 +1,6 @@
 package net.dyrox.client
 
+import net.dyrox.client.combat.Friends
 import net.dyrox.client.command.CommandException
 import net.dyrox.client.command.CommandOutput
 import net.dyrox.client.command.SetCommand
@@ -67,6 +68,26 @@ class ModuleLogicTest {
         val box = AABB(0.0, 0.0, 0.0, 1.0, 2.0, 1.0)
         assertEquals(Vec3(0.0, 1.5, 1.0), Rotation.closestPoint(Vec3(-3.0, 1.5, 4.0), box))
         assertEquals(Vec3(0.5, 1.0, 0.5), Rotation.closestPoint(Vec3(0.5, 1.0, 0.5), box))
+    }
+
+    @Test
+    fun `friends persist case-insensitively`(@org.junit.jupiter.api.io.TempDir dir: java.nio.file.Path) {
+        val file = dir.resolve("friends.json")
+        Friends.load(file)
+        assertTrue(Friends.add("Notch"))
+        assertTrue(!Friends.add("notch"), "names are case-insensitive")
+        Friends.add("jeb_")
+        assertTrue(Friends.isFriend("NOTCH"))
+
+        Friends.load(file) // fresh read from disk
+        assertEquals(listOf("jeb_", "Notch"), Friends.all.sortedBy { it.lowercase() })
+        assertTrue(Friends.remove("JEB_"))
+        Friends.load(file)
+        assertEquals(listOf("Notch"), Friends.all)
+
+        java.nio.file.Files.writeString(file, "not json")
+        Friends.load(file) // a broken file is ignored, not fatal
+        assertEquals(emptyList(), Friends.all)
     }
 
     private enum class Mode(override val choiceName: String) : NamedChoice { SILENT("Silent"), LOCK("Lock view") }

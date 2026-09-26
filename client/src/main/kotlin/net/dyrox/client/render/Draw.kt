@@ -233,6 +233,9 @@ object Glass {
     const val BACKDROP = 0x66000000
     /** HUD surfaces sit over the unblurred game, so they use a darker tint to stay readable. */
     const val HUD = 0xA6101318.toInt()
+
+    /** Tooltips: darker than the HUD so text stays readable over busy panels. */
+    const val TOOLTIP = 0xE6101318.toInt()
 }
 
 object Colors {

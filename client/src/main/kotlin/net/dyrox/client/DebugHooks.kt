@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory
  * - `dyrox.debug.toggle=Sprint`: toggle a module a few seconds after joining the world (HUD/toast check)
  * - `dyrox.debug.switch=Alex`: with the alt manager open, switch to that launcher account (session swap check)
  * - `dyrox.debug.script=...`: scripted steps once in the world, see [DebugScript]
+ * - `dyrox.debug.mouse=x,y`: fake cursor position in the ClickGUI (GUI coordinates)
  * A framebuffer screenshot (`screenshots/dyrox-debug.png`) is taken a few seconds after the scene is ready.
  */
 object DebugHooks {
@@ -30,6 +31,10 @@ object DebugHooks {
 
     val expandedModules: Set<String> =
         System.getProperty("dyrox.debug.expand").orEmpty().split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+
+    /** `dyrox.debug.mouse=x,y`: pretend the cursor is there in the ClickGUI (hover and tooltip screenshots). */
+    val fakeMouse: Pair<Int, Int>? =
+        System.getProperty("dyrox.debug.mouse")?.split(',')?.mapNotNull { it.trim().toIntOrNull() }?.takeIf { it.size == 2 }?.let { it[0] to it[1] }
 
     fun install() {
         val screen = System.getProperty("dyrox.debug.screen")

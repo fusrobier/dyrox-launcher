@@ -60,7 +60,11 @@ compose.desktop {
             // Windows first; Linux packages are produced by CI on Linux runners.
             targetFormats(TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Dyrox Launcher"
-            packageVersion = "0.1.0"
+            // Installers need a plain MAJOR.MINOR.PATCH; "0.1.0-SNAPSHOT" packages as 0.1.0.
+            packageVersion = project.version.toString().substringBefore('-')
+            description = "Minecraft launcher with multi-instance support and the Dyrox Client"
+            copyright = "GPL-3.0-or-later"
+            licenseFile.set(rootProject.file("LICENSE"))
             vendor = "Dyrox"
             // Modules the jlinked runtime needs beyond what Compose detects automatically.
             // jdk.httpserver: loopback redirect receiver for the browser sign-in.
@@ -71,9 +75,13 @@ compose.desktop {
                 dirChooser = true
                 // Keep constant forever: Windows uses it to recognise upgrades of the same app.
                 upgradeUuid = "7c1f2b8e-4d3a-4e8b-9a61-2f5d0c9e7b14"
+                iconFile.set(project.file("packaging/dyrox.ico"))
+                menuGroup = "Dyrox"
             }
             linux {
                 packageName = "dyrox-launcher"
+                iconFile.set(project.file("packaging/dyrox.png"))
+                appCategory = "Game"
             }
         }
     }

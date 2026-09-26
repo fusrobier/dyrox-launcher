@@ -81,6 +81,7 @@ All targets are Minecraft 26.3 (Mojang names). "Local player only" means the hoo
 | `GameRendererMixin` | `GameRenderer#bobHurt(CameraRenderState, PoseStack)` (private) | `@Inject HEAD cancellable` | NoHurtCam |
 | `DeltaTrackerTimerMixin` | `DeltaTracker.Timer#advanceGameTime(long)` → `FloatUnaryOperator#apply(F)F` (target ms per tick) | `@Redirect`, divides by the speed | Timer |
 | `LightmapRenderStateExtractorMixin` | `LightmapRenderStateExtractor#extract(LightmapRenderState, float)` | `@Inject TAIL` when `needsUpdate` | Fullbright |
+| `ToastManagerAccessor` | `ToastManager#occupiedSlots` (BitSet of 32-pixel toast slots) | accessor | HUD array list moves below vanilla toasts |
 
 ### Why gizmos for world rendering
 

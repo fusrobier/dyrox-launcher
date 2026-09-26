@@ -171,12 +171,15 @@ HUD surfaces sit over the unblurred game, so they use a darker glass tint to sta
 
 - **Panels:** one per category. Drag by the header; right-click the header to collapse.
 - **Modules:** left-click toggles, right-click shows the settings.
-- **Scrolling:** mouse wheel, when a panel is taller than the screen.
+- **Scrolling:** mouse wheel, when a panel's modules don't fit. A panel ends above the panel below it in the
+  same column, so panels never cover each other, even after dragging or expanding settings.
 - **Search:** click the bar or just start typing; it matches names and descriptions.
-- **Tooltips:** hovering a module or setting shows its description.
+- **Tooltips:** hovering a module or setting shows its description in a dark glass tooltip (after a
+  short delay, kept on screen).
 - **Keybinds:** in a bind field, press a key; Esc cancels, Backspace/Delete unbinds, right-click switches toggle/hold.
 - **Layout:** positions and collapsed state are saved in the profile (`gui` section). On first open,
-  panels lay themselves out to fit the window.
+  panels form a grid with as many columns as fit, and the rows share the height, so every category is
+  visible even in an 854×480 window.
 - **Theme settings** (module *ClickGUI*): Accent colour (with rainbow), Font, Blur, Animation speed.
 
 `ClickGUI` is a **trigger module**: its key opens the menu instead of toggling a state, and it never
@@ -185,7 +188,8 @@ appears as "enabled".
 ### HUD (module *HUD*, on by default)
 
 - **Watermark:** glass capsule with version and FPS.
-- **Array list:** enabled modules, widest first, sliding in and out. Accent or rainbow colours.
+- **Array list:** enabled modules, widest first, sliding in and out. Accent or rainbow colours. It
+  glides below vanilla toasts (advancements, tutorial hints) while they are shown.
 - **Notifications:** glass toasts with a time bar, including toggle notifications. Toggles caused by
   loading a profile don't notify.
 - **F1:** hides everything, like the vanilla HUD.
@@ -216,6 +220,7 @@ Inert unless a `-Ddyrox.debug.*` property is set (per-instance JVM arguments in 
 | `dyrox.debug.expand=HUD,ClickGUI` | Modules whose settings start expanded in the ClickGUI |
 | `dyrox.debug.toggle=Sprint` | Toggle a module after joining the world (HUD and toast check) |
 | `dyrox.debug.switch=Alex` | With the alt manager open, switch to that launcher account |
+| `dyrox.debug.mouse=x,y` | Pretend the cursor is at these GUI coordinates in the ClickGUI (hover and tooltip screenshots without moving the real cursor) |
 | `dyrox.debug.script=...` | Scripted steps once in the world (vanilla and Dyrox commands, key presses, probes to the log, screenshots). See `DebugScript.kt`. Used to verify Phase 7 modules in a real game |
 
 Each run saves a framebuffer screenshot to `screenshots/dyrox-debug.png`. Framebuffer screenshots

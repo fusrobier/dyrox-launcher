@@ -6,6 +6,7 @@
   "description": "Utility client for Dyrox Launcher.",
   "authors": ["Dyrox"],
   "license": "GPL-3.0-or-later",
+  "icon": "assets/dyrox/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [

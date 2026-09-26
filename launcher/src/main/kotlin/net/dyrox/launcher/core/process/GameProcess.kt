@@ -12,6 +12,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import net.dyrox.launcher.core.launch.LaunchCommand
+import net.dyrox.shared.platform.OperatingSystem
 import java.io.InputStream
 
 /**
@@ -71,7 +72,8 @@ class GameProcess private constructor(
         const val REPLAY_LINES = 5000
 
         fun start(command: LaunchCommand, scope: CoroutineScope, environment: Map<String, String> = emptyMap()): GameProcess {
-            val builder = ProcessBuilder(command.commandLine).directory(command.workingDirectory.toFile())
+            val commandLine = if (OperatingSystem.current == OperatingSystem.WINDOWS) WindowsArguments.escapeAll(command.commandLine) else command.commandLine
+            val builder = ProcessBuilder(commandLine).directory(command.workingDirectory.toFile())
             builder.environment().putAll(environment)
             return GameProcess(builder.start(), command).also { it.start(scope) }
         }

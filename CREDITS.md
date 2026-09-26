@@ -41,6 +41,10 @@ The launcher talks to these public APIs. No code from them is included.
 - [Inter](https://github.com/rsms/inter) typeface v4.1 by Rasmus Andersson (SIL Open Font License 1.1), bundled in the client (`assets/dyrox/font/`, licence in `licenses/Inter-OFL.txt`)
 - [JNA](https://github.com/java-native-access/jna) (Apache-2.0 / LGPL-2.1), for Windows DPAPI
 - [JUnit 5](https://junit.org/junit5/) (EPL-2.0, test only)
+- [WiX Toolset](https://wixtoolset.org/) v3 (MS-RL), downloaded by the Compose Gradle plugin to build the
+  Windows installer; not part of the app
+
+The Dyrox icon is original (drawn by `docs/tools/IconGen.java`).
 
 Minecraft is a trademark of Mojang Studios. Dyrox is not an official Minecraft product and is not
 approved by or associated with Mojang or Microsoft. Game files are always downloaded from Mojang's

@@ -4,6 +4,7 @@ import net.dyrox.client.DyroxClient
 import net.dyrox.client.config.NamedChoice
 import net.dyrox.client.event.Render2DEvent
 import net.dyrox.client.event.handler
+import net.dyrox.client.mixin.ToastManagerAccessor
 import net.dyrox.client.module.Category
 import net.dyrox.client.module.Module
 import net.dyrox.client.render.Animated
@@ -27,6 +28,9 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
     val background by boolean("Background", true, "Dark backing behind array list entries")
     val notifications by boolean("Notifications", true)
     val toggleNotifications by boolean("Toggle notifications", true, "Notify when a module is enabled or disabled")
+
+    /** Top of the array list: glides below vanilla toasts (advancements, tutorial hints) while they show. */
+    private val listTop = Animated(4f, 250f, Easing::outCubic)
 
     /** Per-module slide animation: 0 = hidden, 1 = fully shown. Kept for disabled modules while they slide out. */
     private val slides = HashMap<Module, Animated>()
@@ -77,7 +81,9 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
             .map { it to label(it) }
             .sortedByDescending { Draw.width(it.second) }
         val right = g.guiWidth() - 4
-        var y = 4f
+        val toastSlots = (Minecraft.getInstance().gui.toastManager() as ToastManagerAccessor).`dyrox$getOccupiedSlots`().length()
+        listTop.animateTo(if (toastSlots > 0) toastSlots * TOAST_SLOT_HEIGHT + 4f else 4f)
+        var y = listTop.value
         shown.forEachIndexed { index, (module, text) ->
             val progress = slides.getValue(module).value
             val lineHeight = 12
@@ -90,6 +96,8 @@ object Hud : Module("HUD", Category.RENDER, "Shows the watermark, active modules
             y += lineHeight * progress
         }
     }
+
+    private const val TOAST_SLOT_HEIGHT = 32
 
     private fun label(module: Module): String = module.tag?.let { "${module.name} §7$it" } ?: module.name
 }

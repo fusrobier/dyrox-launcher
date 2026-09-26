@@ -1,6 +1,7 @@
 package net.dyrox.client.ui.clickgui
 
 import com.mojang.blaze3d.platform.InputConstants
+import net.dyrox.client.DebugHooks
 import net.dyrox.client.DyroxClient
 import net.dyrox.client.module.Category
 import net.dyrox.client.module.modules.render.ClickGui
@@ -80,7 +81,8 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
         Draw.rect(graphics, 0, 0, width, height, Colors.fade(Glass.BACKDROP, opening.value.coerceIn(0f, 1f)))
     }
 
-    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, rawMouseX: Int, rawMouseY: Int, a: Float) {
+        val (mouseX, mouseY) = DebugHooks.fakeMouse ?: (rawMouseX to rawMouseY)
         updatePanelLimits()
         val filter = search.trim()
         panels.forEach { panel ->
@@ -107,9 +109,49 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
         pose.popMatrix()
 
         // Tooltip of whatever is under the cursor (topmost panel first).
-        panels.asReversed().firstOrNull { it.isOver(mouseX.toDouble(), mouseY.toDouble(), height) }
+        val tooltip = panels.asReversed().firstOrNull { it.isOver(mouseX.toDouble(), mouseY.toDouble(), height) }
             ?.hoveredElement(mouseX, mouseY, height)?.tooltip()
-            ?.let { graphics.setTooltipForNextFrame(font, Component.literal(it), mouseX, mouseY) }
+        renderTooltip(graphics, tooltip, mouseX, mouseY)
+    }
+
+    private var tooltipText: String? = null
+    private var tooltipSince = 0L
+
+    /** Dark glass tooltip in the UI font, shown after a short hover and kept on screen. */
+    private fun renderTooltip(g: GuiGraphicsExtractor, text: String?, mouseX: Int, mouseY: Int) {
+        if (text != tooltipText) {
+            tooltipText = text
+            tooltipSince = System.currentTimeMillis()
+        }
+        if (text == null) return
+        val shownFor = System.currentTimeMillis() - tooltipSince - TOOLTIP_DELAY
+        if (shownFor < 0) return
+        val alpha = (shownFor / TOOLTIP_FADE.toFloat()).coerceIn(0f, 1f)
+
+        val lines = wrap(text, TOOLTIP_MAX_WIDTH)
+        val lineHeight = 10
+        val w = lines.maxOf { Draw.width(it) } + 12
+        val h = lines.size * lineHeight + 8
+        val x = (mouseX + 10).coerceAtMost(width - w - 4)
+        val y = (mouseY + 10).let { if (it + h > height - 4) mouseY - h - 4 else it }
+        Draw.glass(g, x, y, w, h, 6, tint = Glass.TOOLTIP, alpha = alpha)
+        lines.forEachIndexed { i, line -> Draw.text(g, line, x + 6, y + 5 + i * lineHeight, Colors.fade(Glass.TEXT, alpha)) }
+    }
+
+    private fun wrap(text: String, maxWidth: Int): List<String> {
+        val lines = ArrayList<String>()
+        var current = ""
+        for (word in text.split(' ')) {
+            val candidate = if (current.isEmpty()) word else "$current $word"
+            if (Draw.width(candidate) <= maxWidth || current.isEmpty()) {
+                current = candidate
+            } else {
+                lines += current
+                current = word
+            }
+        }
+        if (current.isNotEmpty()) lines += current
+        return lines
     }
 
     private fun renderSearchBar(g: GuiGraphicsExtractor) {
@@ -140,6 +182,10 @@ class ClickGuiScreen : Screen(Component.literal("Dyrox")) {
 
         /** Where panels start, below the search bar. */
         const val TOP = 36
+
+        const val TOOLTIP_DELAY = 350L
+        const val TOOLTIP_FADE = 120L
+        const val TOOLTIP_MAX_WIDTH = 180
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {

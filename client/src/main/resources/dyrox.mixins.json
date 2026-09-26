@@ -20,7 +20,8 @@
     "MouseHandlerMixin",
     "MultiPlayerGameModeAccessor",
     "MultiPlayerGameModeMixin",
-    "PlayerMixin"
+    "PlayerMixin",
+    "ToastManagerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
