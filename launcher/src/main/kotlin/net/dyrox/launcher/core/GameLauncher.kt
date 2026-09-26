@@ -56,7 +56,12 @@ sealed interface LaunchProgress {
 
 /** Runs every step between "the user pressed Play" and a ready-to-run [LaunchCommand]. */
 class GameLauncher(private val core: LauncherCore) {
-    suspend fun prepare(request: LaunchRequest, onProgress: (LaunchProgress) -> Unit = {}): LaunchCommand =
+    /** [storage] decides where game files go: the shared store, or an instance's isolated one. */
+    suspend fun prepare(
+        request: LaunchRequest,
+        storage: InstallServices = core.install,
+        onProgress: (LaunchProgress) -> Unit = {},
+    ): LaunchCommand =
         withContext(Dispatchers.IO) {
             val platform = core.platform
 
@@ -64,15 +69,15 @@ class GameLauncher(private val core: LauncherCore) {
                 LoaderSpec.Vanilla -> request.gameVersion
                 is LoaderSpec.Fabric -> {
                     onProgress(LaunchProgress.Stage(LaunchStage.INSTALLING_LOADER, request.gameVersion))
-                    core.fabric.install(request.gameVersion, loader.loaderVersion)
+                    storage.fabric.install(request.gameVersion, loader.loaderVersion)
                 }
             }
 
             onProgress(LaunchProgress.Stage(LaunchStage.RESOLVING, versionId))
-            val version = core.resolver.resolve(versionId)
+            val version = storage.resolver.resolve(versionId)
 
             onProgress(LaunchProgress.Stage(LaunchStage.DOWNLOADING_GAME, version.id))
-            val game = core.gameInstaller.install(version, platform) {
+            val game = storage.gameInstaller.install(version, platform) {
                 onProgress(LaunchProgress.Download(LaunchStage.DOWNLOADING_GAME, it))
             }
 

@@ -8,8 +8,11 @@ import java.nio.file.Path
  * On-disk layout. Game files (versions, libraries, assets, Java runtimes) live once under [sharedDir]
  * and are shared by every instance; each instance only owns its own game directory.
  */
-class LauncherPaths(val root: Path) {
-    val sharedDir: Path = root.resolve("shared")
+class LauncherPaths(
+    val root: Path,
+    /** Where versions/libraries/assets/runtimes live; an instance with isolated storage gets its own. */
+    val sharedDir: Path = root.resolve("shared"),
+) {
     val versionsDir: Path = sharedDir.resolve("versions")
     val librariesDir: Path = sharedDir.resolve("libraries")
     val assetsDir: Path = sharedDir.resolve("assets")

@@ -44,6 +44,7 @@ data class LaunchIdentity(
     }
 }
 
+@kotlinx.serialization.Serializable
 data class Resolution(val width: Int, val height: Int)
 
 data class LaunchOptions(

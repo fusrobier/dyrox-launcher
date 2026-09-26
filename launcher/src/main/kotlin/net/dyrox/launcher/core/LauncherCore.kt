@@ -1,17 +1,20 @@
 package net.dyrox.launcher.core
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import net.dyrox.launcher.LauncherInfo
 import net.dyrox.launcher.core.accounts.SkinCache
 import net.dyrox.launcher.core.download.DownloadManager
-import net.dyrox.launcher.core.fabric.FabricInstaller
-import net.dyrox.launcher.core.install.GameInstaller
+import net.dyrox.launcher.core.instance.InstanceRepository
+import net.dyrox.launcher.core.instance.InstanceSupervisor
+import net.dyrox.launcher.core.instance.LaunchPreparer
+import net.dyrox.launcher.core.instance.LoaderType
 import net.dyrox.launcher.core.java.JavaRuntimeManager
 import net.dyrox.launcher.core.launch.LaunchCommandBuilder
 import net.dyrox.launcher.core.manifest.VersionManifestService
 import net.dyrox.launcher.core.mods.ModInstaller
 import net.dyrox.launcher.core.settings.LauncherSettingsStore
-import net.dyrox.launcher.core.version.VersionRepository
-import net.dyrox.launcher.core.version.VersionResolver
 import net.dyrox.shared.account.AccountManager
 import net.dyrox.shared.auth.MicrosoftAuthenticator
 import net.dyrox.shared.http.HttpService
@@ -30,11 +33,10 @@ class LauncherCore(
     val settings = LauncherSettingsStore(paths.root.resolve("launcher.json"))
     val downloads = DownloadManager(http, downloadParallelism)
     val manifests = VersionManifestService(http, paths.cacheDir.resolve("version_manifest_v2.json"))
-    val versions = VersionRepository(paths, http, manifests)
-    val resolver = VersionResolver(versions::load)
-    val gameInstaller = GameInstaller(paths, downloads)
+    /** Game files in the shared store. */
+    val install = InstallServices(paths, http, downloads, manifests)
+    /** Java runtimes are always shared, even for instances with isolated storage. */
     val java = JavaRuntimeManager(paths, http, downloads, platform)
-    val fabric = FabricInstaller(paths, http)
     val mods = ModInstaller(http, downloads)
     val commandBuilder = LaunchCommandBuilder(LauncherInfo.BRAND, LauncherInfo.version)
     val gameLauncher = GameLauncher(this)
@@ -44,6 +46,12 @@ class LauncherCore(
         loginService = ::microsoftAuthenticator,
     )
     val skins = SkinCache(http, paths.cacheDir.resolve("skins"))
+
+    val instances = InstanceRepository(paths)
+
+    /** Outlives any UI screen: running games keep being supervised while the user navigates. */
+    private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val supervisor = InstanceSupervisor(instances, accounts, LaunchPreparer(::prepareInstance), backgroundScope)
 
     @Volatile
     private var authenticator: MicrosoftAuthenticator? = null
@@ -55,6 +63,32 @@ class LauncherCore(
         return MicrosoftAuthenticator(http, clientId).also { authenticator = it }
     }
 
-    /** Phase 2 has a single instance; Phase 4 replaces this with real instance management. */
+    /** Used by the dev CLI's plain `launch` command. */
     val defaultInstanceDir: Path get() = paths.instancesDir.resolve("default")
+
+    private suspend fun prepareInstance(
+        instance: net.dyrox.launcher.core.instance.InstanceConfig,
+        identity: net.dyrox.launcher.core.launch.LaunchIdentity,
+        systemProperties: Map<String, String>,
+        onProgress: (LaunchProgress) -> Unit,
+    ): net.dyrox.launcher.core.launch.LaunchCommand {
+        val storage = instances.isolatedStorage(instance)?.let { InstallServices(it, http, downloads, manifests) } ?: install
+        val request = LaunchRequest(
+            gameVersion = instance.gameVersion,
+            loader = when (instance.loader) {
+                LoaderType.VANILLA -> LoaderSpec.Vanilla
+                LoaderType.FABRIC -> LoaderSpec.Fabric(instance.loaderVersion)
+            },
+            identity = identity,
+            gameDirectory = instances.gameDirectory(instance),
+            nativesDirectory = instances.nativesDirectory(instance),
+            minMemoryMb = instance.minMemoryMb,
+            maxMemoryMb = instance.maxMemoryMb,
+            extraJvmArguments = instance.jvmArguments,
+            resolution = instance.resolution,
+            javaExecutable = instance.javaPath?.takeIf { it.isNotBlank() }?.let(Path::of),
+            systemProperties = systemProperties,
+        )
+        return gameLauncher.prepare(request, storage, onProgress)
+    }
 }

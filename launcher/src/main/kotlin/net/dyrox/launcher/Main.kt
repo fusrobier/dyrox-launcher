@@ -1,6 +1,10 @@
 package net.dyrox.launcher
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -15,10 +19,21 @@ import java.awt.Dimension
 fun main() {
     val core = LauncherCore()
     application {
-        val windowState = rememberWindowState(width = 1200.dp, height = 760.dp, position = WindowPosition(Alignment.Center))
-        Window(onCloseRequest = ::exitApplication, title = LauncherInfo.DISPLAY_NAME, state = windowState) {
-            LaunchedEffect(Unit) { window.minimumSize = Dimension(980, 620) }
-            DyroxTheme { App(core) }
+        val windowState = rememberWindowState(width = 1280.dp, height = 800.dp, position = WindowPosition(Alignment.Center))
+        var exitRequested by remember { mutableStateOf(false) }
+        val exit = {
+            core.supervisor.close()
+            exitApplication()
+        }
+        Window(
+            onCloseRequest = { if (core.supervisor.activeSessions.isEmpty()) exit() else exitRequested = true },
+            title = LauncherInfo.DISPLAY_NAME,
+            state = windowState,
+        ) {
+            LaunchedEffect(Unit) { window.minimumSize = Dimension(1080, 680) }
+            DyroxTheme {
+                App(core, exitRequested, onCancelExit = { exitRequested = false }, onExit = exit)
+            }
         }
     }
 }

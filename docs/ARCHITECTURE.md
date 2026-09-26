@@ -25,7 +25,8 @@ shared/    Pure JVM, no Minecraft classes. Bundled into the mod later, so it dep
            auth/     Microsoft OAuth (browser+PKCE, device code) → Xbox Live → XSTS → Minecraft services
            account/  AccountManager: accounts, sessions, auto-refresh, import/export
            vault/    AES-256-GCM account vault; key via DPAPI / Secret Service / key file
-           See docs/AUTH.md.
+           ipc/      launcher ⇄ game protocol, IpcServer (launcher) and IpcClient (client mod)
+           See docs/AUTH.md and docs/MULTI_INSTANCE.md.
 launcher/  Compose Desktop app
            core/manifest  Mojang version manifest (cached on disk for offline use)
            core/version   version JSON model, inheritsFrom resolution and merging
@@ -40,7 +41,9 @@ launcher/  Compose Desktop app
            core/process   GameProcess + log4j XML log parser
            core/settings  launcher.json (Azure client ID; overridable via DYROX_MS_CLIENT_ID)
            core/accounts  skin cache (textures.minecraft.net only)
-           ui/            theme, components, screens (Play, Accounts, Settings)
+           core/instance  InstanceRepository, GameDirLock, InstanceSupervisor (status, PID, memory,
+                          logs, stop/kill, multi-account launch, IPC handler), ProcessMetrics, WindowControl
+           ui/            theme, components, screens (Instances, Running, Accounts, Settings)
            cli/           headless dev CLI
 client/    Fabric mod (Phase 5)
 docs/      this folder
@@ -64,8 +67,10 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 │  ├─ assets\{indexes,objects,log_configs,virtual}
 │  └─ runtimes\<component>\<platform>\
 └─ instances\<id>\
-   ├─ minecraft\                    gameDir: options.txt, saves, logs, mods, config
-   └─ natives\                      per instance, so parallel instances never share it
+   ├─ instance.json                 per-instance settings (see docs/MULTI_INSTANCE.md)
+   ├─ minecraft\                    gameDir: options.txt, saves, logs, mods, config (+ .dyrox-instance.lock)
+   ├─ natives\                      per instance, so parallel instances never share it
+   └─ storage\                      only with isolated storage: own versions/libraries/assets
 ```
 
 ## Launch pipeline
@@ -107,8 +112,8 @@ loadable by Minecraft 1.21.x (Java 21) if older versions are supported later.
 | 1 | Architecture | done |
 | 2 | Launcher core: manifest, downloads, Java, Fabric, launch command | done |
 | 3 | Accounts: Microsoft device-code/browser OAuth → XBL → XSTS → Minecraft; encrypted vault; alt manager | done (in-game part after Phase 5) |
-| 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | next |
-| 5 | Client core: event bus, modules, settings, config profiles, commands | |
+| 4 | Multi-instance: instance repository, locks, supervisor, per-instance logs, IPC | done |
+| 5 | Client core: event bus, modules, settings, config profiles, commands; IPC client + in-game alt manager hookup | next |
 | 6 | ClickGUI and HUD | |
 | 7 | Starter modules per category | |
 | 8 | Polish, packaging, docs | |

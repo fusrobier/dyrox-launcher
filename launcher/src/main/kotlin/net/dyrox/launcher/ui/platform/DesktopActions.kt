@@ -34,6 +34,27 @@ object DesktopActions {
         xdgOpen(path.toString())
     }
 
+    /** Opens a file (e.g. a crash report) with its default application. */
+    fun openFile(path: Path): Boolean = try {
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+            Desktop.getDesktop().open(path.toFile())
+            true
+        } else {
+            xdgOpen(path.toString())
+        }
+    } catch (_: Exception) {
+        xdgOpen(path.toString())
+    }
+
+    /** Native folder picker (Swing, since AWT's FileDialog can't pick folders on Windows). */
+    fun chooseFolder(title: String): Path? {
+        val chooser = javax.swing.JFileChooser().apply {
+            dialogTitle = title
+            fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+        }
+        return if (chooser.showOpenDialog(null) == javax.swing.JFileChooser.APPROVE_OPTION) chooser.selectedFile.toPath() else null
+    }
+
     fun copyToClipboard(text: String) {
         Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
     }

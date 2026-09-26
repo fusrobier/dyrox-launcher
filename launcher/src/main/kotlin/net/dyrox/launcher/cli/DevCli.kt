@@ -1,6 +1,8 @@
 package net.dyrox.launcher.cli
 
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import net.dyrox.launcher.core.instance.LoaderType
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.dyrox.launcher.core.LaunchProgress
@@ -30,6 +32,7 @@ class DevCli(private val core: LauncherCore) {
         "versions" -> listVersions(includeSnapshots = "--snapshots" in args)
         "launch" -> launch(args.drop(1))
         "accounts" -> accounts(args.drop(1))
+        "instances" -> instances(args.drop(1))
         else -> {
             println(USAGE)
             if (args.isEmpty()) 0 else 1
@@ -69,6 +72,48 @@ class DevCli(private val core: LauncherCore) {
                 println("Removed ${account.username}")
             }
             else -> return usageError("accounts [list|add-offline <name>|login|remove <name>]")
+        }
+        return 0
+    }
+
+    private suspend fun instances(args: List<String>): Int {
+        core.accounts.load()
+        val repository = core.instances
+        repository.load()
+        when (args.firstOrNull() ?: "list") {
+            "list" -> repository.instances.value.forEach {
+                println("  ${it.id.padEnd(20)} ${it.name.padEnd(20)} ${it.gameVersion.padEnd(10)} ${it.loader.label}")
+            }
+            "create" -> {
+                val name = args.getOrNull(1) ?: return usageError("instances create NAME VERSION [--vanilla]")
+                val version = args.getOrNull(2) ?: core.manifests.manifest().latest.release
+                val loader = if ("--vanilla" in args) LoaderType.VANILLA else LoaderType.FABRIC
+                println("Created ${repository.create(name, version, loader).id}")
+            }
+            "launch" -> {
+                val id = args.getOrNull(1) ?: return usageError("instances launch ID [--accounts NAME,NAME]")
+                val names = args.getOrNull(args.indexOf("--accounts") + 1)?.takeIf { "--accounts" in args }?.split(',')
+                val supervisor = core.supervisor
+                val sessions = if (names == null) {
+                    listOf(supervisor.launch(id))
+                } else {
+                    val all = core.accounts.contents.value.accounts
+                    val ids = names.map { name -> all.firstOrNull { it.username.equals(name, true) }?.id ?: return usageError("No account $name") }
+                    supervisor.launchWithAccounts(id, ids)
+                }
+                // Report state changes and memory until every game has exited.
+                val last = HashMap<String, String>()
+                while (sessions.any { it.isActive }) {
+                    for (s in sessions) {
+                        val line = "${s.state.value::class.simpleName} pid=${s.pid} mem=${s.memoryBytes.value?.let { it shr 20 }}MB ipc=${s.ipcConnected}"
+                        if (last.put(s.instance.id, line) != line) println("[${s.instance.name} / ${s.account.username}] $line")
+                    }
+                    delay(1_000)
+                }
+                sessions.forEach { println("[${it.instance.name}] final: ${it.state.value}") }
+                supervisor.close()
+            }
+            else -> return usageError("instances [list|create NAME VERSION [--vanilla]|launch ID [--accounts A,B]]")
         }
         return 0
     }
@@ -191,6 +236,9 @@ class DevCli(private val core: LauncherCore) {
               accounts add-offline NAME              add an offline account
               accounts login                         Microsoft sign-in with a device code
               accounts remove NAME                   remove a stored account
+              instances [list]                       list instances
+              instances create NAME [VERSION] [--vanilla]
+              instances launch ID [--accounts A,B]   run an instance (or one per account) and report status
               launch [<version>|latest] [options]    install and start a version
                 --fabric         install Fabric loader + Fabric API
                 --account NAME   use a stored account (default: the selected one)

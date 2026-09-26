@@ -3,8 +3,8 @@
 A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
 Minecraft **26.3**. Windows 11 first, Linux second.
 
-> Work in progress. Phases 2 (launcher core) and 3 (accounts) of 8 are done.
-> See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/AUTH.md](docs/AUTH.md).
+> Work in progress. Phases 2 (launcher core), 3 (accounts) and 4 (multi-instance) of 8 are done.
+> See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/AUTH.md](docs/AUTH.md) and [docs/MULTI_INSTANCE.md](docs/MULTI_INSTANCE.md).
 
 ## Features so far
 
@@ -18,6 +18,10 @@ Minecraft **26.3**. Windows 11 first, Linux second.
 - **Microsoft accounts** through the official OAuth flow (browser with PKCE, or device code) → Xbox Live → XSTS → Minecraft, with automatic token refresh
 - **Offline profiles** (username only, clearly labelled) with vanilla-compatible offline UUIDs
 - Accounts **encrypted on disk** (AES-256-GCM; key protected by Windows DPAPI or the Linux keyring)
+- **Instances** with their own version, loader, account, RAM, JVM arguments, window size, Java, game folder and optional isolated storage
+- **Multi-instance**: run several games at once, each with its own account. Live status (starting / running / crashed), PID, memory, uptime and a log per game; stop gracefully or kill
+- **Launch with selected accounts**: one click starts one instance per chosen account
+- Conflict-safe: game folders are locked while in use, an account can't play twice, and window titles show instance and account
 
 Microsoft sign-in needs an Azure app ID approved by Mojang. See [docs/AUTH.md](docs/AUTH.md#azure-app-id-required-for-microsoft-accounts).
 
@@ -40,6 +44,8 @@ Headless dev CLI:
 ./gradlew :launcher:runCli --args="accounts add-offline Steve"
 ./gradlew :launcher:runCli --args="accounts login"
 ./gradlew :launcher:runCli --args="launch 26.3 --fabric"
+./gradlew :launcher:runCli --args="instances"
+./gradlew :launcher:runCli --args="instances launch main --accounts Steve,Alex"
 ./gradlew :launcher:runCli --args="launch 1.8.9 --dry-run"
 ```
 
