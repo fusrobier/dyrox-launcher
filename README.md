@@ -1,0 +1,53 @@
+# Dyrox
+
+A Minecraft Java Edition launcher (**Dyrox Launcher**) and Fabric utility client, targeting
+Minecraft **26.3**. Windows 11 first, Linux second.
+
+> Work in progress. Phase 2 of 8 (launcher core) is done. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Features so far
+
+- Lists every Minecraft version from Mojang's manifest (releases, and snapshots on request), including offline via cache
+- Installs vanilla or **Fabric** (loader + Fabric API) automatically
+- Parallel downloads with SHA-1 verification and atomic writes for the client jar, libraries, natives and assets
+- Installs the right Java runtime for each version from Mojang (Java 25 for 26.3, Java 8 for 1.8.9, ...)
+- Correct launch commands for modern (1.13+) and legacy versions, with the access token redacted in logs
+- Live, colour-coded game console (parses Minecraft's log4j XML output)
+- Offline profiles (username only) with vanilla-compatible offline UUIDs
+
+## Requirements
+
+- JDK 25 to build (Temurin recommended). Gradle is provided by the wrapper.
+- Internet on first launch of a version (roughly 600 MB for 26.3 including Java and assets).
+
+## Build and run
+
+```bash
+./gradlew build                 # compile + all unit tests
+./gradlew :launcher:run         # start the launcher UI
+```
+
+Headless dev CLI:
+
+```bash
+./gradlew :launcher:runCli --args="versions"
+./gradlew :launcher:runCli --args="launch 26.3 --fabric --user Steve"
+./gradlew :launcher:runCli --args="launch 1.8.9 --dry-run"
+```
+
+Data is stored in `%APPDATA%\DyroxLauncher` on Windows and `~/.local/share/dyrox-launcher` on Linux.
+Set `DYROX_HOME` to use another folder.
+
+## Project layout
+
+| Path | What |
+|---|---|
+| `shared/` | Code shared by launcher and client: HTTP, hashing, platform, offline profiles, colour palette |
+| `launcher/` | Compose Desktop launcher and its core (manifest, downloads, Java, Fabric, launch command) |
+| `client/` | Fabric mod (from Phase 5) |
+| `docs/` | Architecture and design notes |
+
+## License
+
+GPL-3.0-or-later. See [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md).
+Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
